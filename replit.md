@@ -49,6 +49,24 @@ Preferred communication style: Simple, everyday language.
 ### Build System
 - Supports multi-platform executable builds for Windows, macOS, and Linux using `electron-builder`. Includes specific build scripts and configurations for Windows local builds and Wine cross-compilation.
 
+### Enhanced JavaScript and Cookie Support ✅
+- **Issue**: Websites with JavaScript protection (Cloudflare, etc.) returning minimal content
+- **Solution**: Enhanced HTTP client with JavaScript simulation and cookie support
+- **Implementation**:
+  - Upgraded HTTP client headers to simulate JavaScript-enabled browser
+  - Added cookie jar support for session persistence
+  - Enhanced Cloudflare and JavaScript protection detection
+  - Intelligent fallback content extraction from multiple sources
+- **Features Added**:
+  - Real browser headers (Chrome 120 user agent, sec-fetch headers)
+  - Cookie jar with automatic cookie handling
+  - Enhanced JavaScript protection detection (Cloudflare, security checks)
+  - Multi-source content extraction (noscript, JSON-LD, meta tags)
+  - Structured data extraction for protected sites
+- **Content Sources**: noscript tags, JSON-LD structured data, meta descriptions, Open Graph tags
+- **Logging**: Detailed protection detection and enhanced content extraction logging
+- **Status**: JavaScript protection handling operational with intelligent content extraction
+
 ## External Dependencies
 
 ### Core Runtime Dependencies

@@ -198,19 +198,40 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                     raise HTTPException(status_code=500, detail=f"Crawl failed: {result.error_message}")
                     
         except Exception as crawl4ai_error:
-            # Fallback to BeautifulSoup + aiohttp extraction when crawl4ai fails
+            # Fallback to enhanced HTTP extraction with JavaScript simulation
             scraping_logger.warning(f"crawl4ai failed for {crawl_request.url}: {str(crawl4ai_error)}")
-            scraping_logger.info(f"Falling back to HTTP + BeautifulSoup extraction for {crawl_request.url}")
-            logger.warning(f"crawl4ai failed ({crawl4ai_error}), using HTTP + BeautifulSoup extraction")
+            scraping_logger.info(f"Falling back to enhanced HTTP extraction with JavaScript simulation for {crawl_request.url}")
+            logger.warning(f"crawl4ai failed ({crawl4ai_error}), using enhanced HTTP + BeautifulSoup extraction")
             import aiohttp
             
+            # Enhanced browser headers to simulate JavaScript-enabled browser
+            browser_headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Cache-Control': 'max-age=0'
+            }
+            
+            # Create connector with SSL and connection settings
+            connector = aiohttp.TCPConnector(ssl=False, limit=100, limit_per_host=30)
+            timeout = aiohttp.ClientTimeout(total=30, connect=10)
+            
             async with aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=30),
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                }
+                headers=browser_headers,
+                connector=connector,
+                timeout=timeout,
+                cookie_jar=aiohttp.CookieJar()  # Enable cookies
             ) as session:
-                async with session.get(crawl_request.url) as response:
+                scraping_logger.debug(f"Making HTTP request with enhanced browser simulation to {crawl_request.url}")
+                async with session.get(crawl_request.url, allow_redirects=True) as response:
                     html_content = await response.text()
                     
                     # Advanced content extraction with BeautifulSoup
@@ -224,6 +245,67 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                     # Extract title
                     title = soup.find('title')
                     title_text = title.get_text().strip() if title else "Extracted Content"
+                    
+                    # Enhanced detection for JavaScript protection
+                    if any(indicator in html_content.lower() for indicator in [
+                        'enable javascript', 'javascript is disabled', 'just a moment',
+                        'checking your browser', 'cloudflare', 'please wait', 'security check',
+                        'javascript and cookies', 'browser check', 'ray id'
+                    ]):
+                        scraping_logger.warning(f"JavaScript/Cloudflare protection detected on {crawl_request.url}")
+                        scraping_logger.info(f"Enhanced extraction for JavaScript-protected content")
+                        
+                        # Enhanced content extraction for protected sites
+                        enhanced_content = []
+                        
+                        # Extract noscript content
+                        noscript_elements = soup.find_all('noscript')
+                        for noscript in noscript_elements:
+                            noscript_text = noscript.get_text().strip()
+                            if noscript_text and len(noscript_text) > 10:
+                                enhanced_content.append(noscript_text)
+                                scraping_logger.debug(f"Added noscript content: {noscript_text[:50]}...")
+                        
+                        # Extract JSON-LD structured data
+                        json_scripts = soup.find_all('script', type='application/ld+json')
+                        for script in json_scripts:
+                            try:
+                                import json
+                                data = json.loads(script.string or '{}')
+                                if isinstance(data, dict):
+                                    if 'headline' in data:
+                                        title_text = data['headline']
+                                    for key in ['description', 'articleBody', 'text', 'content']:
+                                        if key in data and data[key]:
+                                            enhanced_content.append(str(data[key]))
+                                            scraping_logger.debug(f"Added JSON-LD {key}")
+                            except Exception as e:
+                                scraping_logger.debug(f"Failed to parse JSON-LD: {e}")
+                        
+                        # Extract meta information
+                        meta_tags = soup.find_all('meta')
+                        for meta in meta_tags:
+                            content = meta.get('content', '')
+                            name = meta.get('name', '').lower()
+                            property_name = meta.get('property', '').lower()
+                            
+                            if content and len(content) > 20:
+                                if name in ['description', 'keywords', 'author']:
+                                    enhanced_content.append(content)
+                                    scraping_logger.debug(f"Added meta {name}")
+                                elif property_name in ['og:title', 'og:description', 'twitter:description']:
+                                    enhanced_content.append(content)
+                                    scraping_logger.debug(f"Added {property_name}")
+                        
+                        # If we found enhanced content, use it
+                        if enhanced_content:
+                            enhanced_text = ' '.join(enhanced_content)
+                            scraping_logger.info(f"Enhanced extraction successful: {len(enhanced_text)} characters from protected content")
+                        else:
+                            enhanced_text = None
+                            scraping_logger.warning(f"No enhanced content found for protected site {crawl_request.url}")
+                    else:
+                        enhanced_text = None
                     
                     # Extract main content - try multiple strategies
                     main_content = (
@@ -242,6 +324,11 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                     else:
                         text_content = soup.get_text(separator=' ', strip=True)
                         text_content = ' '.join(text_content.split())
+                    
+                    # Use enhanced content if available and better than extracted content
+                    if enhanced_text and len(enhanced_text) > len(text_content):
+                        text_content = enhanced_text
+                        scraping_logger.info(f"Using enhanced content extraction for better results")
                     
                     # Extract links and images
                     links = [a.get('href') for a in soup.find_all('a', href=True) if a.get('href').startswith(('http', '/'))][:10]
@@ -429,8 +516,34 @@ async def singlefile_capture(crawl_request: CrawlRequest):
         # Fallback to basic extraction
         try:
             import aiohttp
-            async with aiohttp.ClientSession() as session:
-                async with session.get(crawl_request.url) as response:
+            # Enhanced headers to simulate a real browser with JavaScript support
+            browser_headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Cache-Control': 'max-age=0'
+            }
+            
+            # Create session with cookies enabled and enhanced settings
+            connector = aiohttp.TCPConnector(ssl=False, limit=100, limit_per_host=30)
+            timeout = aiohttp.ClientTimeout(total=30, connect=10)
+            
+            async with aiohttp.ClientSession(
+                headers=browser_headers,
+                connector=connector,
+                timeout=timeout,
+                cookie_jar=aiohttp.CookieJar()
+            ) as session:
+                scraping_logger.debug(f"Making HTTP request with enhanced browser simulation to {crawl_request.url}")
+                async with session.get(crawl_request.url, allow_redirects=True) as response:
                     html_content = await response.text()
                     return {
                         "success": True,
