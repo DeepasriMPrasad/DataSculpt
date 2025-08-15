@@ -111,6 +111,12 @@ class CrawlRequest(BaseModel):
     respect_robots_txt: bool = True
     # Custom user agent suffix
     user_agent_suffix: str = "CrawlOps-Studio/1.0"
+    # Authentication options
+    auth_type: str = "none"  # none, bearer, basic, custom
+    auth_token: str = ""     # Bearer token or custom header value
+    auth_username: str = ""  # For basic auth
+    auth_password: str = ""  # For basic auth
+    custom_headers: dict = {} # Additional custom headers
 
 class CrawlStatus(BaseModel):
     status: str
@@ -157,6 +163,25 @@ async def crawl_single_page(url: str, crawl_request: CrawlRequest):
             scraping_logger.debug(f"Applying {delay}s delay before crawling {url}")
             await asyncio.sleep(delay)
         
+        # Build authentication headers for browser automation
+        crawler_headers = {}
+        if crawl_request.auth_type == "bearer" and crawl_request.auth_token:
+            crawler_headers["Authorization"] = f"Bearer {crawl_request.auth_token}"
+            scraping_logger.info(f"Using Bearer token authentication for browser automation: {url}")
+        elif crawl_request.auth_type == "basic" and crawl_request.auth_username and crawl_request.auth_password:
+            import base64
+            credentials = base64.b64encode(f"{crawl_request.auth_username}:{crawl_request.auth_password}".encode()).decode()
+            crawler_headers["Authorization"] = f"Basic {credentials}"
+            scraping_logger.info(f"Using Basic authentication for browser automation: {url} (user: {crawl_request.auth_username})")
+        elif crawl_request.auth_type == "custom" and crawl_request.auth_token:
+            crawler_headers["Authorization"] = crawl_request.auth_token
+            scraping_logger.info(f"Using custom authorization header for browser automation: {url}")
+        
+        # Add custom headers
+        if crawl_request.custom_headers:
+            crawler_headers.update(crawl_request.custom_headers)
+            scraping_logger.info(f"Added {len(crawl_request.custom_headers)} custom headers for browser automation: {url}")
+
         # Try crawl4ai first with enhanced JavaScript and cookies
         try:
             async with AsyncWebCrawler(
@@ -164,7 +189,8 @@ async def crawl_single_page(url: str, crawl_request: CrawlRequest):
                 browser_type="chromium",
                 verbose=True,
                 always_by_pass_cache=True,
-                delay_before_return_html=max(0.1, min(30.0, crawl_request.delay_seconds))
+                delay_before_return_html=max(0.1, min(30.0, crawl_request.delay_seconds)),
+                headers=crawler_headers if crawler_headers else None
             ) as crawler:
                 result = await crawler.arun(
                     url=url,
@@ -201,6 +227,25 @@ async def crawl_single_page(url: str, crawl_request: CrawlRequest):
             from bs4 import BeautifulSoup
             from urllib.parse import urljoin, urlparse, urldefrag
             
+            # Build authentication headers
+            auth_headers = {}
+            if crawl_request.auth_type == "bearer" and crawl_request.auth_token:
+                auth_headers["Authorization"] = f"Bearer {crawl_request.auth_token}"
+                scraping_logger.info(f"Using Bearer token authentication for {url}")
+            elif crawl_request.auth_type == "basic" and crawl_request.auth_username and crawl_request.auth_password:
+                import base64
+                credentials = base64.b64encode(f"{crawl_request.auth_username}:{crawl_request.auth_password}".encode()).decode()
+                auth_headers["Authorization"] = f"Basic {credentials}"
+                scraping_logger.info(f"Using Basic authentication for {url} (user: {crawl_request.auth_username})")
+            elif crawl_request.auth_type == "custom" and crawl_request.auth_token:
+                auth_headers["Authorization"] = crawl_request.auth_token
+                scraping_logger.info(f"Using custom authorization header for {url}")
+            
+            # Add custom headers if provided
+            if crawl_request.custom_headers:
+                auth_headers.update(crawl_request.custom_headers)
+                scraping_logger.info(f"Added {len(crawl_request.custom_headers)} custom headers for {url}")
+
             # Enhanced browser headers
             browser_headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -217,12 +262,15 @@ async def crawl_single_page(url: str, crawl_request: CrawlRequest):
                 'Cache-Control': 'max-age=0'
             }
             
+            # Merge authentication headers with browser headers
+            final_headers = {**browser_headers, **auth_headers}
+            
             async with aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=30),
                 connector=aiohttp.TCPConnector(limit=10),
                 cookie_jar=aiohttp.CookieJar()
             ) as session:
-                async with session.get(url, headers=browser_headers, allow_redirects=True) as response:
+                async with session.get(url, headers=final_headers, allow_redirects=True) as response:
                     html_content = await response.text()
                     soup = BeautifulSoup(html_content, 'html.parser')
                     

@@ -1,0 +1,29 @@
+{
+  "crawl_summary": {
+    "start_url": "https://httpbin.org/bearer",
+    "total_pages": 1,
+    "successful_pages": 1,
+    "failed_pages": 0,
+    "total_words": 0,
+    "unique_links": 0,
+    "unique_images": 0,
+    "max_depth_reached": 0
+  },
+  "pages": [
+    {
+      "success": true,
+      "title": "No title",
+      "content": "",
+      "word_count": 0,
+      "links": [],
+      "images": [],
+      "status_code": 401,
+      "method": "http_extraction",
+      "url": "https://httpbin.org/bearer",
+      "depth": 0,
+      "crawl_order": 1
+    }
+  ],
+  "combined_content": "\n\n=== No title (https://httpbin.org/bearer) ===\n",
+  "timestamp": "2025-08-15T23:55:24.421656"
+}
