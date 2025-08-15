@@ -20,7 +20,7 @@ Desktop application for web crawling with SSO support, human-in-the-loop CAPTCHA
 - **Safe Mode**: Ultra-respectful crawling (1 concurrent, 8-15s delay, strict robots.txt)
 - **Guided Mode**: Manual review and approval for each page
 
-### Enterprise Features
+### Other Features
 - **Corporate Network Support**: Custom CA bundles and proxy configuration
 - **Local-Only Operation**: No telemetry or external dependencies
 - **Professional UI**: Dark/light themes with real-time queue management
