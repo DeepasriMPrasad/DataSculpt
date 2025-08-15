@@ -1,0 +1,14 @@
+{
+  "title": "Links",
+  "content": "0 1 2 3 4",
+  "url": "https://httpbin.org/links/5",
+  "timestamp": "2025-08-15T22:48:58.256178",
+  "links": [
+    "/links/5/1",
+    "/links/5/2",
+    "/links/5/3",
+    "/links/5/4"
+  ],
+  "images": [],
+  "word_count": 5
+}
