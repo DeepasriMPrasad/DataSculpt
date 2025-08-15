@@ -1,75 +1,151 @@
-# CrawlOps Studio - Build Instructions
+# CrawlOps Studio - Windows Local Build Instructions
 
-## Quick Windows Build (Recommended)
+## For Windows Local Development (Updated August 15, 2025)
 
-**IMPORTANT**: 
-- Windows executables must be built on Windows (not from Replit/Linux)
-- You must run this from the **project root directory**, not from the scripts folder
-- See `WINDOWS_EXECUTABLE_GUIDE.md` for detailed Windows build instructions
+### Prerequisites
+- Windows 10/11 (required for native builds)
+- Node.js 18+ installed
+- Git for Windows (if cloning from repository)
+- Administrator privileges recommended
 
-**Use the build script (handles all fixes automatically):**
+### Step-by-Step Build Process
+
+#### Option 1: Use the Enhanced Windows Build Script
 ```bash
-# For Git Bash/MSYS (recommended) - from project root:
-bash scripts/build-windows.sh
+# Open Command Prompt or PowerShell as Administrator
+# Navigate to your project directory
+cd path\to\crawlops-studio
 
-# For Command Prompt - from project root:
-scripts\build-windows.bat
+# Run the enhanced Windows build script
+scripts\build-windows-local.bat
 ```
 
-**Output files:**
-- `dist/CrawlOps Studio Setup 1.0.0.exe` (installer)
-- `dist/win-unpacked/CrawlOps Studio.exe` (portable)
+This script includes:
+- ✅ Detailed logging and environment validation
+- ✅ Platform detection (ensures Windows-only execution)
+- ✅ Automatic cleanup of problematic esbuild binaries
+- ✅ Electron cache management
+- ✅ Windows-specific dependency handling
+- ✅ Comprehensive error reporting with troubleshooting tips
 
-## Manual Windows Build
+#### Option 2: Manual Build Process
+If you prefer to run commands manually:
 
-If you prefer manual commands (run from project root directory):
-```bash
-# Clean esbuild platform binaries (prevents ENOENT errors)
-rm -rf node_modules/@esbuild/aix-ppc64 node_modules/@esbuild/android-* node_modules/@esbuild/darwin-* node_modules/@esbuild/linux-*
+1. **Clean Environment**
+   ```bash
+   # Remove previous builds
+   rmdir /s /q dist 2>nul
+   rmdir /s /q node_modules\.cache 2>nul
+   
+   # Clean Electron cache
+   rmdir /s /q "%USERPROFILE%\.cache\electron" 2>nul
+   ```
 
-# Fix electron dependency
-npm uninstall electron
-npm install --save-dev electron electron-builder
+2. **Install Dependencies**
+   ```bash
+   # Reinstall Electron for Windows compatibility
+   npm uninstall electron electron-builder
+   npm install --save-dev electron@37.3.0 electron-builder@26.0.12
+   npm install
+   ```
 
-# Build frontend (make sure index.html exists in root)
-npx vite build
+3. **Build Frontend**
+   ```bash
+   npx vite build
+   ```
 
-# Create Windows executable
-npx electron-builder --win --x64 --config electron-builder.config.js --publish=never
+4. **Build Windows Executable**
+   ```bash
+   npx electron-builder --win --x64 --config electron-builder.config.js --publish=never --verbose
+   ```
+
+### Output Files
+
+After successful build, you'll find:
+
+- **Portable Executable**: `dist\win-unpacked\CrawlOps Studio.exe`
+  - Can be run directly without installation
+  - Suitable for development and testing
+
+- **Installer**: `dist\CrawlOps Studio Setup 1.0.0.exe`
+  - Full installer for distribution
+  - Creates desktop shortcuts and start menu entries
+
+### Common Issues & Solutions
+
+#### Error: "wine is required"
+- **Cause**: Trying to build Windows executable from Linux/macOS
+- **Solution**: Use the Windows-specific build script on a Windows machine
+
+#### Error: "Cannot find module electron"
+- **Cause**: Electron not properly installed for Windows
+- **Solution**: Run the dependency reinstallation steps above
+
+#### Error: "ENOENT esbuild platform binary"
+- **Cause**: Incompatible esbuild binaries for cross-platform development
+- **Solution**: Use the enhanced build script which cleans these automatically
+
+#### Build hangs or fails randomly
+- **Cause**: Windows Defender or antivirus interference
+- **Solution**: 
+  1. Add project folder to Windows Defender exclusions
+  2. Run Command Prompt as Administrator
+  3. Temporarily disable real-time protection during build
+
+#### Error: "Failed to sign executable"
+- **Cause**: Code signing certificate issues
+- **Solution**: Build script disables code signing for local builds automatically
+
+### Performance Tips
+
+1. **SSD Recommended**: Building on SSD significantly improves build speed
+2. **RAM**: Ensure at least 8GB RAM available during build
+3. **Antivirus**: Temporarily disable real-time scanning for faster builds
+4. **Network**: Use stable internet connection for dependency downloads
+
+### Troubleshooting Checklist
+
+Before asking for help, verify:
+
+- [ ] Running on Windows 10/11 (not Linux/macOS)
+- [ ] Node.js 18+ installed (`node --version`)
+- [ ] NPM working (`npm --version`)
+- [ ] Administrator privileges if possible
+- [ ] Project files present (package.json, electron-builder.config.js)
+- [ ] No antivirus blocking build process
+- [ ] Sufficient disk space (at least 2GB free)
+
+### Advanced Configuration
+
+For custom builds, modify `electron-builder.config.js`:
+
+```javascript
+// Windows-specific options
+win: {
+  target: [
+    { target: 'nsis', arch: ['x64'] },      // Installer
+    { target: 'portable', arch: ['x64'] }   // Portable
+  ],
+  requestedExecutionLevel: 'asInvoker',     // No admin required
+  publisherName: 'Your Company Name'
+}
 ```
 
-## Common Build Errors & Fixes
+### Build Verification
 
-**Error: "Could not resolve entry module 'index.html'"**
-- Solution: Make sure you're running the build from the project root directory (not inside /scripts/)
-- The index.html file must be in the same folder as package.json
+Test your build:
 
-**Error: "Cannot compute electron version from installed node modules"**
-- Solution: Run the build script again, it will reinstall electron with specific versions
-- Or manually run: `npm uninstall electron electron-builder && npm install --save-dev electron@^37.3.0 electron-builder@^26.0.12`
+1. Navigate to `dist\win-unpacked\`
+2. Double-click `CrawlOps Studio.exe`
+3. Verify application launches and core features work
+4. Test crawling functionality with a simple URL
 
-**Error: "script src='./session_frontend.js' can't be bundled without type='module'"**
-- This is now fixed automatically - the script tag includes type="module"
+### Distribution
 
-## Other Platforms
+- **Development**: Use portable executable from `win-unpacked`
+- **End Users**: Distribute the installer from `dist\CrawlOps Studio Setup*.exe`
+- **Corporate**: Package with additional enterprise tools as needed
 
-**macOS:**
-```bash
-bash scripts/build-mac.sh
-```
+---
 
-**Linux:**
-```bash
-bash scripts/build-linux.sh  
-```
-
-**All Platforms:**
-```bash
-bash scripts/build-all.sh
-```
-
-## Common Issues Fixed
-
-- ✅ **ENOENT scandir '@esbuild/aix-ppc64'** - Build scripts clean problematic platform binaries
-- ✅ **"electron" only allowed in devDependencies** - Scripts auto-fix dependency placement  
-- ✅ **Application entry file "index.js" corrupted** - Added proper entry point configuration
+**Note**: This build process is optimized for Windows local development environments. Cross-compilation from Linux (like Replit) requires additional tooling and is not covered in this guide.

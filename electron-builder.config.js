@@ -35,9 +35,19 @@ module.exports = {
       {
         "target": "nsis",
         "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
       }
     ],
-    "icon": "icon.ico"
+    "icon": "icon.ico",
+    "requestedExecutionLevel": "asInvoker",
+    "publisherName": "CrawlOps Studio",
+    "verifyUpdateCodeSignature": false,
+    "artifactName": "${productName} Setup ${version}.${ext}",
+    "certificateFile": null,
+    "certificatePassword": null
   },
   "mac": {
     "target": [
@@ -65,10 +75,16 @@ module.exports = {
   },
   "nsis": {
     "oneClick": false,
-    "allowElevation": true,
+    "allowElevation": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
-    "createStartMenuShortcut": true
+    "createStartMenuShortcut": true,
+    "displayLanguageSelector": false,
+    "installerIcon": "icon.ico",
+    "uninstallerIcon": "icon.ico",
+    "shortcutName": "CrawlOps Studio",
+    "deleteAppDataOnUninstall": false,
+    "runAfterFinish": true
   },
   "dmg": {
     "title": "CrawlOps Studio",
