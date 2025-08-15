@@ -392,11 +392,13 @@ async def recursive_crawl(crawl_request: CrawlRequest):
             scraping_logger.debug(f"Skipping {current_url} - filtered by URL patterns")
             continue
         
-        # Check robots.txt compliance if enabled
-        if crawl_request.respect_robots_txt:
+        # Check robots.txt compliance if enabled and not being ignored
+        if not crawl_request.ignore_robots and crawl_request.respect_robots_txt:
             if not await check_robots_txt(current_url, user_agent):
                 scraping_logger.info(f"Skipping {current_url} - blocked by robots.txt")
                 continue
+        elif crawl_request.ignore_robots:
+            scraping_logger.info(f"Ignoring robots.txt for {current_url} (user override)")
         
         crawled_urls.add(current_url)
         pages_crawled += 1
@@ -725,37 +727,240 @@ async def extract_pdf_links(file: UploadFile):
             "filename": file.filename
         }
 
-# Session management endpoints
+# SSO Authentication System
+import sqlite3
+import json as json_module
+from datetime import datetime, timedelta
+from urllib.parse import urlparse
+
+# Initialize session database
+def init_session_db():
+    """Initialize SQLite database for session storage."""
+    conn = sqlite3.connect('sessions.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            domain TEXT NOT NULL,
+            session_data TEXT NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Initialize session database on startup
+init_session_db()
+
 class SSORequest(BaseModel):
-    domain: str
-    
-@app.post("/api/auth/sso")
-async def initiate_sso_login(request: SSORequest):
-    """Initiate SSO login for a domain."""
-    return {
-        "success": True,
-        "message": f"SSO login initiated for {request.domain}",
-        "auth_url": f"https://auth.{request.domain}/oauth/authorize",
-        "status": "redirecting"
-    }
+    domain: str = ""
+    url: str = ""
+
+@app.post("/api/auth/sso-login")
+async def sso_login(request: SSORequest):
+    """Initiate SSO login process."""
+    try:
+        url = request.url or f"https://{request.domain}"
+        if not url:
+            raise HTTPException(status_code=400, detail="URL or domain required for SSO login")
+        
+        domain = urlparse(url).netloc or request.domain
+        
+        # In a real implementation, this would redirect to the SSO provider
+        # For now, we'll simulate the process
+        auth_data = {
+            "domain": domain,
+            "auth_url": f"https://{domain}/auth/login",
+            "state": f"state_{hash(domain) % 10000}",
+            "redirect_uri": f"http://localhost:5000/api/auth/callback",
+            "login_type": "sso"
+        }
+        
+        api_logger.info(f"SSO login initiated for domain: {domain}")
+        
+        return {
+            "success": True,
+            "auth_url": auth_data["auth_url"],
+            "state": auth_data["state"],
+            "message": f"SSO login initiated for {domain}",
+            "instructions": "Complete login in the opened browser window. The session will be saved automatically."
+        }
+        
+    except Exception as e:
+        api_logger.error(f"SSO login failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"SSO login failed: {str(e)}")
 
 @app.post("/api/auth/save-session")
-async def save_auth_session(domain: str, tokens: dict):
-    """Save authentication session tokens."""
-    return {
-        "success": True,
-        "message": f"Authentication session saved for {domain}",
-        "expires_in": 3600
-    }
+async def save_auth_session(request: dict):
+    """Save authentication session data."""
+    try:
+        domain = request.get("domain", "")
+        session_data = request.get("session_data", {})
+        expires_hours = request.get("expires_hours", 24)  # Default 24 hours
+        
+        if not domain or not session_data:
+            raise HTTPException(status_code=400, detail="Domain and session_data required")
+        
+        # Calculate expiration
+        expires_at = datetime.now() + timedelta(hours=expires_hours)
+        
+        # Save to database
+        conn = sqlite3.connect('sessions.db')
+        cursor = conn.cursor()
+        
+        # Remove existing sessions for this domain
+        cursor.execute('DELETE FROM sessions WHERE domain = ?', (domain,))
+        
+        # Insert new session
+        cursor.execute('''
+            INSERT INTO sessions (domain, session_data, expires_at) 
+            VALUES (?, ?, ?)
+        ''', (domain, json_module.dumps(session_data), expires_at))
+        
+        conn.commit()
+        conn.close()
+        
+        api_logger.info(f"Session saved for domain: {domain}, expires: {expires_at}")
+        
+        return {
+            "success": True,
+            "message": f"Session saved for {domain}",
+            "domain": domain,
+            "expires": expires_at.isoformat(),
+            "session_id": f"session_{hash(domain) % 10000}"
+        }
+        
+    except Exception as e:
+        api_logger.error(f"Save session failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save session: {str(e)}")
 
 @app.get("/api/auth/status")
 async def auth_status():
     """Get current authentication status."""
-    return {
-        "authenticated": False,
-        "domains": [],
-        "message": "No active authentication sessions"
-    }
+    try:
+        conn = sqlite3.connect('sessions.db')
+        cursor = conn.cursor()
+        
+        # Get active sessions (not expired)
+        cursor.execute('''
+            SELECT domain, session_data, expires_at, created_at 
+            FROM sessions 
+            WHERE expires_at > datetime('now') 
+            ORDER BY created_at DESC
+        ''')
+        
+        active_sessions = []
+        for row in cursor.fetchall():
+            domain, session_data, expires_at, created_at = row
+            try:
+                session_obj = json_module.loads(session_data)
+                active_sessions.append({
+                    "domain": domain,
+                    "expires_at": expires_at,
+                    "created_at": created_at,
+                    "session_type": session_obj.get("type", "unknown"),
+                    "user": session_obj.get("user", "anonymous")
+                })
+            except:
+                continue
+        
+        conn.close()
+        
+        # Clean up expired sessions
+        conn = sqlite3.connect('sessions.db')
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM sessions WHERE expires_at <= datetime("now")')
+        deleted_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        if deleted_count > 0:
+            api_logger.info(f"Cleaned up {deleted_count} expired sessions")
+        
+        return {
+            "authenticated": len(active_sessions) > 0,
+            "active_sessions": len(active_sessions),
+            "domains": [s["domain"] for s in active_sessions],
+            "sessions": active_sessions,
+            "message": f"{len(active_sessions)} active authentication sessions" if active_sessions else "No active authentication sessions"
+        }
+        
+    except Exception as e:
+        api_logger.error(f"Auth status check failed: {str(e)}")
+        return {
+            "authenticated": False,
+            "active_sessions": 0,
+            "domains": [],
+            "sessions": [],
+            "error": str(e),
+            "message": "Failed to check authentication status"
+        }
+
+@app.post("/api/auth/logout")
+async def logout(request: dict):
+    """Logout and remove session for a domain."""
+    try:
+        domain = request.get("domain")
+        if not domain:
+            # Logout from all domains
+            conn = sqlite3.connect('sessions.db')
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM sessions')
+            deleted_count = cursor.rowcount
+            conn.commit()
+            conn.close()
+            
+            api_logger.info(f"Logged out from all domains ({deleted_count} sessions removed)")
+            return {
+                "success": True,
+                "message": f"Logged out from all domains ({deleted_count} sessions removed)"
+            }
+        else:
+            # Logout from specific domain
+            conn = sqlite3.connect('sessions.db')
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM sessions WHERE domain = ?', (domain,))
+            deleted_count = cursor.rowcount
+            conn.commit()
+            conn.close()
+            
+            if deleted_count > 0:
+                api_logger.info(f"Logged out from {domain}")
+                return {
+                    "success": True,
+                    "message": f"Logged out from {domain}"
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": f"No active session found for {domain}"
+                }
+        
+    except Exception as e:
+        api_logger.error(f"Logout failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Logout failed: {str(e)}")
+
+def get_session_for_domain(domain: str) -> dict:
+    """Get active session data for a domain."""
+    try:
+        conn = sqlite3.connect('sessions.db')
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT session_data FROM sessions 
+            WHERE domain = ? AND expires_at > datetime('now')
+            ORDER BY created_at DESC LIMIT 1
+        ''', (domain,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return json_module.loads(row[0])
+        return {}
+    except:
+        return {}
 
 # Serve the main HTML file
 @app.get("/")
