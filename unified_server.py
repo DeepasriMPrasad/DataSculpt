@@ -98,6 +98,7 @@ class CrawlRequest(BaseModel):
     max_pages: int = 100
     export_formats: List[str] = ["json", "md", "html", "pdf"]
     ignore_robots: bool = False
+    delay_seconds: float = 1.0  # Configurable delay between requests (0.1-30.0 seconds)
 
 class CrawlStatus(BaseModel):
     status: str
@@ -159,17 +160,8 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                 headless=False,  # Non-headless browser for full JavaScript support
                 browser_type="chromium",
                 verbose=True,
-                browser_config={
-                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                    "viewport": {"width": 1920, "height": 1080},
-                    "accept_downloads": False,
-                    "java_script_enabled": True,
-                    "accept_cookies": True,
-                    "block_ads": True,
-                    "block_images": False
-                },
                 always_by_pass_cache=True,
-                delay_before_return_html=3.0  # Wait for JavaScript to load
+                delay_before_return_html=max(0.1, min(30.0, crawl_request.delay_seconds))  # Configurable delay (0.1-30s)
             ) as crawler:
                 # Crawl the URL with JavaScript execution and cookie support
                 result = await crawler.arun(
@@ -213,7 +205,8 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                         "config": {
                             "max_depth": crawl_request.max_depth,
                             "max_pages": crawl_request.max_pages,
-                            "export_formats": crawl_request.export_formats
+                            "export_formats": crawl_request.export_formats,
+                            "delay_seconds": crawl_request.delay_seconds
                         }
                     }
                 else:
@@ -225,6 +218,14 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
             scraping_logger.warning(f"crawl4ai failed for {crawl_request.url}: {str(crawl4ai_error)}")
             scraping_logger.info(f"Falling back to enhanced HTTP extraction with JavaScript simulation for {crawl_request.url}")
             logger.warning(f"crawl4ai failed ({crawl4ai_error}), using enhanced HTTP + BeautifulSoup extraction")
+            
+            # Apply configurable delay for HTTP requests too
+            if crawl_request.delay_seconds > 0:
+                import asyncio
+                delay = max(0.1, min(30.0, crawl_request.delay_seconds))
+                scraping_logger.debug(f"Applying {delay}s delay before HTTP request")
+                await asyncio.sleep(delay)
+            
             import aiohttp
             
             # Enhanced browser headers to simulate JavaScript-enabled browser
@@ -497,7 +498,8 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                         "config": {
                             "max_depth": crawl_request.max_depth,
                             "max_pages": crawl_request.max_pages,
-                            "export_formats": crawl_request.export_formats
+                            "export_formats": crawl_request.export_formats,
+                            "delay_seconds": crawl_request.delay_seconds
                         }
                     }
         except Exception as e:
