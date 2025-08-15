@@ -80,8 +80,16 @@
             }, React.createElement('path', { d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3' }))
         };
 
-        // API Client
-        const API_BASE = 'http://localhost:8000';
+        // API Client - Use unified server approach
+        const getApiBase = () => {
+            // Use the same origin but with /api prefix
+            const origin = window.location.origin;
+            const apiUrl = `${origin}/api`;
+            console.log('API Base URL:', apiUrl);
+            return apiUrl;
+        };
+        
+        const API_BASE = getApiBase();
 
         const apiClient = {
             async get(endpoint) {
@@ -156,6 +164,8 @@
                 try {
                     // Test API connection first
                     console.log('Testing API connection...');
+                    console.log('API Base URL being used:', API_BASE);
+                    
                     const healthResponse = await apiClient.get('/health');
                     console.log('API Health:', healthResponse);
                     
@@ -178,8 +188,25 @@
                     alert(`Crawl completed! Extracted ${response.meta.word_count} words from ${settings.startUrl}`);
                 } catch (error) {
                     console.error('Failed to start crawl:', error);
+                    console.error('Error details:', {
+                        message: error.message,
+                        stack: error.stack,
+                        name: error.name,
+                        apiBase: API_BASE
+                    });
                     setCrawlStatus('stopped');
-                    alert(`Failed to start crawl: ${error.message || 'Unknown error'}`);
+                    
+                    // More detailed error message
+                    let errorMsg = 'Failed to start crawl: ';
+                    if (error.message.includes('fetch')) {
+                        errorMsg += 'Cannot connect to API server. Please check if the backend is running.';
+                    } else if (error.message.includes('CORS')) {
+                        errorMsg += 'Cross-origin request blocked. Please check CORS settings.';
+                    } else {
+                        errorMsg += error.message || 'Unknown error';
+                    }
+                    
+                    alert(errorMsg);
                 }
             };
 
