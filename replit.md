@@ -67,16 +67,20 @@ Preferred communication style: Simple, everyday language.
 - **Logging**: Detailed protection detection and enhanced content extraction logging
 - **Status**: JavaScript protection handling operational with intelligent content extraction
 
-### JavaScript-Heavy Site Limitations ⚠️
-- **Reality**: Some sites (like AWS documentation) require full JavaScript execution to load content
-- **Current Capability**: Enhanced HTTP extraction with multiple fallback methods
+### Enhanced JavaScript and Browser Support ✅
+- **Primary Method**: Non-headless Chromium browser with full JavaScript execution
+- **Browser Features**: 
+  - JavaScript enabled with 3-second wait for dynamic content loading
+  - Cookie support with automatic session persistence
+  - User simulation and navigator override for compatibility
+  - Iframe processing and overlay element removal
+  - Automatic page scrolling to trigger lazy-loaded content
+- **Fallback Method**: Enhanced HTTP extraction with multiple content sources when browser automation fails
 - **Behavior**: 
-  - Detects JavaScript protection automatically
-  - Extracts available static content (noscript, meta tags, structured data)
-  - Attempts deeper content extraction from HTML containers
-  - Provides meaningful feedback when content is JavaScript-dependent
-- **Alternative**: For full JavaScript rendering, users would need browser automation tools like Playwright locally
-- **Status**: Working as designed - extracts maximum possible content from static HTML sources
+  - Attempts full browser automation first for JavaScript-heavy sites
+  - Falls back to HTTP extraction with intelligent content detection
+  - Provides detailed logging of extraction methods used
+- **Status**: Full JavaScript execution capability with intelligent fallbacks
 
 ## External Dependencies
 

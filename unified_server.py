@@ -154,10 +154,33 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
             import asyncio
             from crawl4ai import AsyncWebCrawler
             
-            # Initialize crawler
-            async with AsyncWebCrawler(verbose=True) as crawler:
-                # Crawl the URL with actual content extraction
-                result = await crawler.arun(url=crawl_request.url)
+            # Initialize crawler with non-headless mode, JavaScript and cookies enabled
+            async with AsyncWebCrawler(
+                headless=False,  # Non-headless browser for full JavaScript support
+                browser_type="chromium",
+                verbose=True,
+                browser_config={
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "viewport": {"width": 1920, "height": 1080},
+                    "accept_downloads": False,
+                    "java_script_enabled": True,
+                    "accept_cookies": True,
+                    "block_ads": True,
+                    "block_images": False
+                },
+                always_by_pass_cache=True,
+                delay_before_return_html=3.0  # Wait for JavaScript to load
+            ) as crawler:
+                # Crawl the URL with JavaScript execution and cookie support
+                result = await crawler.arun(
+                    url=crawl_request.url,
+                    js_code="window.scrollTo(0, document.body.scrollHeight); await new Promise(resolve => setTimeout(resolve, 2000));",  # Wait for dynamic content
+                    wait_for="body",  # Wait for page body to load
+                    process_iframes=True,
+                    remove_overlay_elements=True,
+                    simulate_user=True,  # Simulate user interactions
+                    override_navigator=True  # Override navigator for better compatibility
+                )
                 
                 if result.success:
                     # Extract real content
