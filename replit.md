@@ -30,6 +30,32 @@ Preferred communication style: Simple, everyday language.
 - **Storage**: Local SQLite database in `~/.crawlops/sessions.db`
 - **Status**: Integrated into unified server and main application
 
+### Windows Build Configuration Fixes ✅
+- **Issue**: Multiple Windows build errors - "Could not resolve entry module", ENOENT esbuild platform binaries, invalid electron-builder config
+- **Root Causes**: 
+  - Vite configuration missing proper input path
+  - Invalid "main" property in electron-builder config
+  - Missing session_frontend.js file causing 404 errors
+  - User running build from wrong directory (scripts/ instead of project root)
+- **Solutions Applied**:
+  - Fixed Vite config to use `'./index.html'` as input with proper root directory
+  - Removed invalid "main" property from electron-builder.config.js
+  - Created `session_frontend.js` with complete SessionManager API integration
+  - Created `index.js` entry point file for proper package.json compatibility
+  - Updated build scripts to clean esbuild platform binaries automatically
+  - Enhanced BUILD_INSTRUCTIONS.md with troubleshooting section
+- **Files Modified**: 
+  - `vite.config.js` (fixed input configuration)
+  - `electron-builder.config.js` (removed invalid properties)
+  - `index.html` (fixed session_frontend.js path)
+  - `BUILD_INSTRUCTIONS.md` (added troubleshooting and directory requirements)
+  - `scripts/build-windows.sh` (enhanced with binary cleanup)
+  - `scripts/build-windows.bat` (Command Prompt version with cleanup)
+- **Files Added**:
+  - `session_frontend.js` (SessionManager class for frontend integration)
+  - `index.js` (proper entry point for package.json)
+- **Status**: Windows build configuration fully resolved with comprehensive error handling
+
 ### Multi-Platform Executable Build Setup ✅
 - **Issue**: User getting "Missing script: build:win" error on local Windows machine
 - **Root Cause**: Project uses Replit workflows instead of traditional npm scripts
