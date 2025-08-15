@@ -1,0 +1,429 @@
+Nyx, consider this your enterprise-ready, plug-and-play **master build prompt**. It bundles the full spec, file/folder scaffolding, IPC contracts, and a production-grade README with deploy/run steps. Drop it into your favorite code-gen/copilot—or hand it to a dev squad—and you’re off to the races.
+
+---
+
+# **Build Prompt — CrawlOps Studio**
+
+A professional-grade, locally deployable desktop web app to crawl and download webpages (and linked content), operate behind SSO, handle CAPTCHAs with a human-in-the-loop, and offer Safe-Mode and Guided Crawl profiles—**without using any headless browser**.
+
+---
+
+## 0) Non-Negotiables
+
+* **No headless browsing** (no Puppeteer/Playwright headless). All navigation and captures occur in a **visible Electron BrowserWindow**.
+* **SingleFile** must run **inside** the visible window to produce one-file HTML and feed **printToPDF** for PDFs.
+* **crawl4ai** performs structured extraction for JSON/Markdown.
+* Must work on internal corporate sites with SSO (Okta/AzureAD/GitHub Enterprise/Confluence, etc.) by letting the user authenticate in the visible window; reuse that session for the crawl.
+* **Human-in-the-loop** CAPTCHA resolution only (no autosolvers).
+
+---
+
+## 1) Objective
+
+Create **CrawlOps Studio**, an Electron + React (TypeScript) desktop app with a FastAPI backend that:
+
+1. Crawls a start URL with controllable depth and rules,
+2. Exports **JSON**, **Markdown**, **SingleFile HTML**, and **PDF**,
+3. Optionally **recurses into links found inside generated PDFs**,
+4. Supports **SSO** and **CAPTCHAs** via interactive pause/resume,
+5. Provides **Standard**, **Safe-Mode**, and **Guided Crawl** execution profiles.
+
+---
+
+## 2) Tech Stack
+
+* **Desktop/UI:** Electron, React, TypeScript, Vite, TailwindCSS
+* **Backend:** Python 3.11+, FastAPI
+* **Extraction:** `crawl4ai`
+* **HTML/PDF:** SingleFile (extension or core injection) + `webContents.printToPDF`
+* **PDF Link Parsing:** `pypdf` or `pdfminer.six`
+* **Packaging:** electron-builder (Win/macOS/Linux)
+* **Testing:** Vitest/Jest (frontend), Pytest (backend)
+
+---
+
+## 3) Core Features
+
+### 3.1 URL Input & Modes
+
+* Inputs: **Start URL**, **Depth**, **Allowed domains**, **Disallowed paths (regex)**, **Max pages**.
+* Formats: **JSON**, **Markdown**, **SingleFile HTML**, **PDF** (multi-select).
+* Toggle: **Crawl links extracted from PDFs**.
+
+### 3.2 Auth & SSO
+
+* All navigation in visible Electron window.
+* If 401/403/redirect to login is detected, bring window to front and prompt user to authenticate.
+* “**Log in now**” button to pre-auth before crawling.
+* Reuse session cookies/storage for subsequent crawl requests.
+
+### 3.3 CAPTCHA Handling (Human-in-the-loop)
+
+* Detect CAPTCHAs via DOM heuristics/keywords/challenge markup.
+* **Pause** the queue for that URL; show a **Challenge modal** with actions:
+
+  * **Continue** (after user solves), **Retry**, **Skip**, **Abort**
+  * “Bring window to front” button
+* On **Continue**, verify challenge cleared (DOM recheck or lightweight fetch 200).
+
+### 3.4 Crawl & Capture
+
+* **crawl4ai** → JSON + Markdown via FastAPI.
+* **SingleFile HTML** → generated in visible window, saved as `<slug>.singlefile.html`.
+* **PDF** → generated via `webContents.printToPDF` from the SingleFile HTML; backgrounds/margins on.
+* Store all outputs in user-chosen folder; filenames are deterministic slugs of URL.
+
+### 3.5 PDF Link Recursion
+
+* Extract URLs from created PDFs (URI annotations).
+* Normalize, filter by rules, dedupe, enqueue.
+
+### 3.6 Failure Handling (Interactive Recovery)
+
+* Classes: Auth/SSO required, CAPTCHA, 4xx/5xx, timeout, robots disallow, SingleFile error, crawl4ai error, PDF parse error.
+* **Recover modal** with summary, logs, and actions:
+
+  * Open in browser (same session), Retry, Skip, Edit URL, Adjust Delay/Concurrency, Allowlist path/domain.
+* Queue pauses for that URL until user chooses.
+
+### 3.7 Execution Profiles
+
+* **Standard:** concurrency=3; delay=1–2s jitter; robots.txt toggleable.
+* **Safe-Mode:** concurrency=1; delay=8–15s jitter; robots.txt locked **ON**; slow auto-scroll before capture; long timeouts; strict backoff; no parallel asset optimizations; banner: “Safe-Mode active.”
+* **Guided Crawl:** one URL at a time; **Pre-flight** review (scope/robots verdict); user **Open & Review** then **Mark Ready**; post-capture integrity check; selective enqueue for PDF links.
+
+### 3.8 UI
+
+* **Dashboard:** inputs, format toggles, profile selector, save location, login status.
+* **Live Queue:** per-item status chips (WAITING\_CAPTCHA, WAITING\_USER\_FIX, RETRYING, DONE, SKIPPED).
+* **Challenge Center:** pending user actions (CAPTCHA/Auth/Manual fix).
+* **Preview Panel:** SingleFile HTML preview, Markdown snippet, open PDF.
+* **Settings:** concurrency, delay, robots toggle (locked in Safe-Mode), proxy config, **custom CA bundle**, output directory, integrity thresholds, retry policy.
+* Dark/Light theme.
+
+### 3.9 Observability & Reports
+
+* Structured JSON logs; exportable CSV/JSON run report:
+
+  * url, depth, formats, status, bytes, duration, profile, retries, user\_actions\[].
+* KPIs: pages/hour, success/hour per profile.
+
+---
+
+## 4) File/Folder Structure (Monorepo)
+
+```
+crawlops-studio/
+├─ apps/
+│  ├─ desktop/                      # Electron + React UI (Vite)
+│  │  ├─ src/
+│  │  │  ├─ main/                   # Electron main process
+│  │  │  │  ├─ main.ts
+│  │  │  │  ├─ preload.ts
+│  │  │  │  ├─ singlefile/
+│  │  │  │  │  ├─ loader.ts         # Inject SingleFile or load extension
+│  │  │  │  │  └─ singlefile-core.js (if bundling core)
+│  │  │  │  ├─ ipc/
+│  │  │  │  │  ├─ channels.ts
+│  │  │  │  │  └─ handlers.ts
+│  │  │  │  └─ security.ts          # CA certs, proxy, session policies
+│  │  │  ├─ renderer/               # React app
+│  │  │  │  ├─ App.tsx
+│  │  │  │  ├─ components/
+│  │  │  │  ├─ pages/
+│  │  │  │  │  ├─ Dashboard.tsx
+│  │  │  │  │  ├─ Queue.tsx
+│  │  │  │  │  ├─ ChallengeCenter.tsx
+│  │  │  │  │  └─ Settings.tsx
+│  │  │  │  ├─ hooks/
+│  │  │  │  ├─ state/                # Zustand/Redux for queue, profiles
+│  │  │  │  └─ styles/
+│  │  │  ├─ shared/
+│  │  │  │  ├─ models.ts             # URLItem, RunReport, Settings, etc.
+│  │  │  │  └─ validators.ts         # zod/yup schemas
+│  │  │  └─ index.html
+│  │  ├─ vite.config.ts
+│  │  ├─ electron-builder.yml
+│  │  └─ package.json
+│  └─ api/                           # FastAPI service
+│     ├─ crawlops_api/
+│     │  ├─ main.py
+│     │  ├─ routers/
+│     │  │  ├─ extract.py            # crawl4ai endpoints
+│     │  │  ├─ health.py
+│     │  │  └─ report.py
+│     │  ├─ services/
+│     │  │  ├─ crawl4ai_service.py
+│     │  │  ├─ pdf_links.py
+│     │  │  └─ storage.py
+│     │  ├─ models/
+│     │  │  ├─ schemas.py            # Pydantic models
+│     │  └─ utils/
+│     │     ├─ url_utils.py
+│     │     └─ log.py
+│     ├─ tests/
+│     │  ├─ test_extract.py
+│     │  └─ test_pdf_links.py
+│     ├─ pyproject.toml
+│     └─ README.md
+├─ packages/
+│  └─ scheduler/                     # Shared TS scheduler (optional)
+│     ├─ src/
+│     │  ├─ index.ts
+│     │  └─ policies.ts
+│     └─ package.json
+├─ scripts/
+│  ├─ dev.sh                         # Start API + Desktop in dev
+│  ├─ build_all.sh                   # Build backend + pack Electron
+│  └─ postinstall.js                 # Copy SingleFile assets if needed
+├─ config/
+│  ├─ default.json
+│  ├─ safe-mode.json
+│  └─ guided.json
+├─ dist/                             # Build artifacts
+├─ .env.example
+├─ README.md                         # Master runbook (see section 7)
+└─ package.json                      # Workspace root (pnpm/yarn workspaces)
+```
+
+---
+
+## 5) IPC & API Contracts
+
+### 5.1 Electron IPC (Main ↔ Renderer)
+
+**Channels (request/response via `ipcRenderer.invoke` unless noted):**
+
+* `profile:get` → `{ profile: 'standard'|'safe'|'guided', config }`
+* `profile:set` `{ profile, overrides? }` → `{ ok: true }`
+* `auth:login` → brings BrowserWindow to front and navigates to current URL; resolves when navigation idle.
+* `challenge:captchaDetected` (event) payload `{ url, provider?: 'recaptcha'|'hcaptcha'|'unknown', screenshotPath?: string }`
+* `challenge:awaitUserAction` → resolves `{ action: 'continue'|'retry'|'skip'|'abort', overrides?: { delayMs?, concurrency? } }`
+* `capture:singlefile` `{ url }` → `{ htmlPath, bytes }`
+* `capture:pdf` `{ singlefileHtmlPath, options? }` → `{ pdfPath, bytes }`
+* `queue:enqueue` `{ urls: string[], options }` → `{ enqueued: number }`
+* `queue:status` → `{ items: URLItem[], stats: { running, waiting, done, failed } }`
+* `queue:pauseItem` `{ url }` → `{ ok: true }`
+* `queue:resumeItem` `{ url }` → `{ ok: true }`
+* `settings:get` / `settings:set`
+* `certs:setCABundle` `{ path }` → `{ ok: true }`
+* `network:setProxy` `{ httpProxy?, httpsProxy? }` → `{ ok: true }`
+
+**URLItem (shared model):**
+
+```ts
+type URLItem = {
+  url: string;
+  depth: number;
+  status: 'queued'|'running'|'waiting_captcha'|'waiting_user'|'done'|'failed'|'skipped';
+  formats: { json?: boolean; md?: boolean; html?: boolean; pdf?: boolean };
+  attempts: number;
+  error?: string;
+  outputs?: { jsonPath?: string; mdPath?: string; singlefileHtmlPath?: string; pdfPath?: string };
+  profile: 'standard'|'safe'|'guided';
+  startedAt?: string;
+  finishedAt?: string;
+};
+```
+
+### 5.2 FastAPI (Renderer/Main ↔ Backend)
+
+Base URL: `http://127.0.0.1:<API_PORT>`
+
+* `GET /health` → `{"status":"ok"}`
+* `POST /extract`
+
+  * Body: `{"url": "https://...", "timeout": 30, "user_agent?": "..."}`
+  * Resp: `{"url": "...", "json": {...}, "markdown": "...", "meta": {"title":"...", "status":200}}`
+* `POST /pdf/links`
+
+  * Body: `{"pdf_path":"<abs path>"}`
+  * Resp: `{"url_count": N, "urls": ["https://...", ...]}`
+* `GET /report/run/:id` → run summary JSON
+* `POST /report/export`
+
+  * Body: `{"format":"csv"|"json", "path":"<abs out path>"}` → `{"ok": true, "path": "..."}`
+* Errors must include a `code` field: `AUTH_REQUIRED | CAPTCHA_REQUIRED | TIMEOUT | ROBOTS_BLOCKED | SINGLEFILE_ERROR | EXTRACT_ERROR | HTTP_ERROR`.
+
+---
+
+## 6) Implementation Highlights
+
+### 6.1 SingleFile in Electron
+
+* Prefer loading the **extension** via `session.loadExtension` on app start; fallback to **injecting SingleFile core** script (`singlefile-core.js`) into pages.
+* Trigger capture via `window.singlefile.processCurrentPage()` (exposed when using core). Return inlined HTML → save to disk.
+* Render saved SingleFile HTML in a hidden-but-visible window state (not headless) and call `webContents.printToPDF` with `printBackground: true`.
+
+### 6.2 Safe-Mode Tuning
+
+* Global scheduler enforces **serial** execution and delay jitter 8–15s.
+* Slow scroll the page (renderer script) to trigger lazy loads prior to capture.
+* Exponential backoff: 30s → 60s → 120s on 429/503.
+* robots.txt **locked ON**; same-host only unless explicit allowlist.
+
+### 6.3 Guided Crawl Flow
+
+* Pre-flight fetch robots verdict + scope check (no navigation).
+* User opens page, completes SSO/MFA, expands content; clicks **Mark Ready**.
+* Integrity checks (min text chars, required selectors). If fail: prompt Retry/Tweak/Skip/Safe-Mode.
+* PDF link recursion shows extracted URLs with Select-All/filters (same-domain default).
+
+### 6.4 Security/Compliance
+
+* No credential harvesting; user logs in directly in the Electron window.
+* Local-only. No telemetry. Respect corporate proxies and **custom CA**.
+* Sanitize filenames; prevent path traversal; operate within user-selected output folder.
+
+---
+
+## 7) README (Deploy & Run)
+
+### 7.1 Prerequisites
+
+* Node.js ≥ 20, pnpm or yarn
+* Python ≥ 3.11
+* Git
+* OS packages required for PDF generation (Chromium/Electron built-ins are used)
+* Optional: corporate **proxy** and **CA bundle** path
+
+### 7.2 Quick Start (Dev)
+
+```bash
+# 1) Clone
+git clone https://example.com/crawlops-studio.git
+cd crawlops-studio
+
+# 2) Bootstrap workspace
+pnpm install        # or yarn
+
+# 3) Backend venv
+cd apps/api
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -U pip wheel
+pip install -e .            # installs crawl4ai, pypdf/pdfminer, fastapi, uvicorn
+cp ../../.env.example .env  # optional; set API_PORT, PROXY, CA_BUNDLE, etc.
+
+# 4) Start API
+uvicorn crawlops_api.main:app --host 127.0.0.1 --port 7070 --reload
+
+# 5) In another terminal, start Desktop (Electron + Vite)
+cd ../desktop
+pnpm dev    # or yarn dev
+```
+
+Open the Electron app window when it pops. Set **Save Location**, pick a **Profile (Standard/Safe/Guided)**, and hit **Log in now** if your target is SSO-gated. Then **Start Crawl**.
+
+### 7.3 Environment Variables (`.env.example`)
+
+```
+# Backend
+API_PORT=7070
+REQUEST_TIMEOUT_SECONDS=45
+CRAWL4AI_USER_AGENT=CrawlOpsStudio/1.0
+
+# Network
+HTTP_PROXY=
+HTTPS_PROXY=
+NO_PROXY=localhost,127.0.0.1
+
+# Certificates
+CA_BUNDLE_PATH=           # e.g., C:\corp\ca.pem or /etc/ssl/certs/corp.pem
+
+# Electron
+ELECTRON_DISABLE_SECURITY_WARNINGS=true
+```
+
+### 7.4 Production Build (Packaged App)
+
+```bash
+# 1) Build backend wheel / freeze deps (optional)
+cd apps/api
+pip install -e .
+pytest -q
+
+# 2) Build desktop
+cd ../desktop
+pnpm build
+
+# 3) Package Electron for your OS
+pnpm dist   # uses electron-builder with electron-builder.yml
+
+# Artifacts will appear in apps/desktop/dist/
+# e.g., CrawlOps-Studio-Setup-x.y.z.exe, .dmg, or AppImage
+```
+
+**Bundling the API**:
+
+* Option A: Ship a small Python runtime with your installer and run `uvicorn` as a child process on app start.
+* Option B: Freeze API via PyInstaller/Briefcase and launch the binary from Electron.
+
+Configure `electron-builder.yml` to include the backend binary/runtime in `extraResources` and start/stop it via Electron main on app lifecycle.
+
+### 7.5 Corporate Proxy & CA Certificates
+
+* Set `HTTP_PROXY`/`HTTPS_PROXY` in `.env` for the backend.
+* In Electron app Settings, specify **Proxy** and **CA bundle**.
+* Electron main loads CA bundle into the session at startup to trust internal TLS.
+
+### 7.6 SSO & CAPTCHA Workflow
+
+* Click **Log in now** to navigate to the start URL and authenticate in the visible window.
+* If a CAPTCHA appears, a **Challenge modal** prompts you to solve it in the window.
+* Click **Continue**; the app verifies access and resumes the crawl.
+
+### 7.7 Robots.txt & IntrAnet Mode
+
+* By default, robots.txt is respected.
+* For internal sites with explicit permission, toggle “Ignore robots.txt” (disabled in **Safe-Mode**, where robots is locked ON).
+
+### 7.8 Testing
+
+```bash
+# Frontend
+cd apps/desktop
+pnpm test
+
+# Backend
+cd ../api
+pytest -q
+```
+
+### 7.9 Troubleshooting
+
+* **Stuck on login?** Use **Guided Crawl**, pre-auth, then **Mark Ready**.
+* **Blocks/429s?** Switch to **Safe-Mode** (serial + long delays).
+* **Blank PDFs?** Ensure SingleFile capture completed; enable slow auto-scroll.
+* **SSL errors?** Set **CA\_BUNDLE\_PATH** or configure in Settings.
+
+---
+
+## 8) Acceptance Criteria (Recap)
+
+* User can authenticate in a visible window (no headless), and the app reuses that session for crawling.
+* For each page, selected formats (**JSON/MD/SingleFile HTML/PDF**) are generated and saved.
+* On CAPTCHA or failures, the app pauses and waits for user input, then resumes.
+* **Safe-Mode** reduces velocity and increases success on guarded sites.
+* **Guided** enforces step-through with human oversight and PDF link selection.
+* A detailed run report (CSV/JSON) is exportable.
+
+---
+
+## 9) Test Plan (Recap)
+
+* **Unit:** URL normalization, PDF URL extraction, CAPTCHA detection helpers, integrity thresholds.
+* **Integration:** SSO flow, CAPTCHA modal flow, Safe-Mode (serial, long delays), Guided (pre-flight → mark ready → post-capture checks), SingleFile → PDF pipeline.
+* **Manual:** Internal intranet portal, public gated wiki, GitHub/Confluence with MFA.
+
+---
+
+## 10) Stretch Goals (Optional)
+
+* **Diff Mode** for recrawls (DOM text hash or heading fingerprints).
+* **Policy Presets** exported/imported as JSON.
+* **Signed run manifests** for audit trails.
+
+---
+
+If you want a minimal “hello world” spike (one URL, SingleFile HTML + PDF only) as a bootstrapping PR template, I can append that too.
