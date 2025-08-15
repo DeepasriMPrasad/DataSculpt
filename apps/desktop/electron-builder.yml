@@ -1,0 +1,25 @@
+appId: com.crawlops.studio
+productName: CrawlOps Studio
+directories:
+  output: ../../dist/packages
+files:
+  - dist/
+  - node_modules/
+  - package.json
+extraFiles:
+  - from: assets/
+    to: assets/
+    filter:
+      - "**/*"
+mac:
+  target: dmg
+  icon: assets/icon.png
+win:
+  target: nsis
+  icon: assets/icon.png
+linux:
+  target: AppImage
+  icon: assets/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

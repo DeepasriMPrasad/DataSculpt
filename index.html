@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrawlOps Studio - Enterprise Web Crawling</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/lucide@latest/dist/umd/lucide.js" rel="preload" as="script">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .lucide { width: 20px; height: 20px; }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // Icons using Lucide
+        const Icons = {
+            Dashboard: () => React.createElement('svg', {
+                className: 'lucide w-5 h-5',
+                viewBox: '0 0 24 24',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: '2'
+            }, React.createElement('path', { d: 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' })),
+
+            Queue: () => React.createElement('svg', {
+                className: 'lucide w-5 h-5',
+                viewBox: '0 0 24 24',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: '2'
+            }, React.createElement('path', { d: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01' })),
+
+            Settings: () => React.createElement('svg', {
+                className: 'lucide w-5 h-5',
+                viewBox: '0 0 24 24',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: '2'
+            }, React.createElement('circle', { cx: '12', cy: '12', r: '3' }), React.createElement('path', { d: 'M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24' })),
+
+            Shield: () => React.createElement('svg', {
+                className: 'lucide w-5 h-5',
+                viewBox: '0 0 24 24',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: '2'
+            }, React.createElement('path', { d: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' })),
+
+            Play: () => React.createElement('svg', {
+                className: 'lucide w-5 h-5',
+                viewBox: '0 0 24 24',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: '2'
+            }, React.createElement('polygon', { points: '5,3 19,12 5,21' })),
+
+            Pause: () => React.createElement('svg', {
+                className: 'lucide w-5 h-5',
+                viewBox: '0 0 24 24',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: '2'
+            }, React.createElement('rect', { x: '6', y: '4', width: '4', height: '16' }), React.createElement('rect', { x: '14', y: '4', width: '4', height: '16' })),
+
+            Download: () => React.createElement('svg', {
+                className: 'lucide w-5 h-5',
+                viewBox: '0 0 24 24',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: '2'
+            }, React.createElement('path', { d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3' }))
+        };
+
+        // API Client
+        const API_BASE = 'http://localhost:8000';
+
+        const apiClient = {
+            async get(endpoint) {
+                const response = await fetch(`${API_BASE}${endpoint}`);
+                return response.json();
+            },
+            async post(endpoint, data) {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                return response.json();
+            }
+        };
+
+        // Main App Component
+        function CrawlOpsStudio() {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [crawlStatus, setCrawlStatus] = useState('stopped');
+            const [queue, setQueue] = useState([]);
+            const [settings, setSettings] = useState({
+                startUrl: '',
+                depth: 2,
+                maxPages: 100,
+                formats: { json: true, md: true, html: false, pdf: false },
+                profile: 'standard'
+            });
+
+            const tabs = [
+                { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
+                { id: 'queue', label: 'Queue', icon: Icons.Queue },
+                { id: 'challenges', label: 'Challenges', icon: Icons.Shield },
+                { id: 'settings', label: 'Settings', icon: Icons.Settings }
+            ];
+
+            const handleStartCrawl = async () => {
+                if (!settings.startUrl) {
+                    alert('Please enter a starting URL');
+                    return;
+                }
+                
+                setCrawlStatus('running');
+                try {
+                    const response = await apiClient.post('/extract', {
+                        url: settings.startUrl,
+                        timeout: 30
+                    });
+                    console.log('Crawl started:', response);
+                } catch (error) {
+                    console.error('Failed to start crawl:', error);
+                    setCrawlStatus('stopped');
+                }
+            };
+
+            const handleStopCrawl = () => {
+                setCrawlStatus('stopped');
+                console.log('Crawl stopped');
+            };
+
+            return React.createElement('div', { className: 'h-screen flex bg-gray-50 dark:bg-gray-900' },
+                // Sidebar
+                React.createElement('div', { className: 'w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col' },
+                    // Logo
+                    React.createElement('div', { className: 'p-6 border-b border-gray-200 dark:border-gray-700' },
+                        React.createElement('h1', { className: 'text-xl font-bold text-gray-900 dark:text-white' }, 'CrawlOps Studio'),
+                        React.createElement('p', { className: 'text-sm text-gray-500 dark:text-gray-400' }, 'Enterprise Web Crawling')
+                    ),
+
+                    // Navigation
+                    React.createElement('nav', { className: 'flex-1 p-4' },
+                        React.createElement('ul', { className: 'space-y-2' },
+                            tabs.map(tab =>
+                                React.createElement('li', { key: tab.id },
+                                    React.createElement('button', {
+                                        onClick: () => setActiveTab(tab.id),
+                                        className: `w-full flex items-center px-4 py-2 text-left rounded-lg transition-colors ${
+                                            activeTab === tab.id
+                                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
+                                                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`
+                                    },
+                                        React.createElement(tab.icon, { className: 'w-5 h-5 mr-3' }),
+                                        tab.label
+                                    )
+                                )
+                            )
+                        )
+                    ),
+
+                    // Status
+                    React.createElement('div', { className: 'p-4 border-t border-gray-200 dark:border-gray-700' },
+                        React.createElement('div', { className: 'flex items-center justify-between' },
+                            React.createElement('span', { className: 'text-sm text-gray-600 dark:text-gray-400' }, 'Status'),
+                            React.createElement('span', {
+                                className: `px-2 py-1 text-xs rounded ${
+                                    crawlStatus === 'running'
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                }`
+                            }, crawlStatus.charAt(0).toUpperCase() + crawlStatus.slice(1))
+                        )
+                    )
+                ),
+
+                // Main Content
+                React.createElement('div', { className: 'flex-1 flex flex-col' },
+                    // Header
+                    React.createElement('header', { className: 'bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4' },
+                        React.createElement('div', { className: 'flex items-center justify-between' },
+                            React.createElement('h2', { className: 'text-2xl font-semibold text-gray-900 dark:text-white' },
+                                tabs.find(t => t.id === activeTab)?.label || 'Dashboard'
+                            ),
+                            React.createElement('div', { className: 'flex space-x-2' },
+                                crawlStatus === 'stopped'
+                                    ? React.createElement('button', {
+                                        onClick: handleStartCrawl,
+                                        className: 'flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors'
+                                    },
+                                        React.createElement(Icons.Play, { className: 'w-4 h-4 mr-2' }),
+                                        'Start Crawl'
+                                    )
+                                    : React.createElement('button', {
+                                        onClick: handleStopCrawl,
+                                        className: 'flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors'
+                                    },
+                                        React.createElement(Icons.Pause, { className: 'w-4 h-4 mr-2' }),
+                                        'Stop Crawl'
+                                    )
+                            )
+                        )
+                    ),
+
+                    // Content
+                    React.createElement('main', { className: 'flex-1 p-6 overflow-auto' },
+                        activeTab === 'dashboard' && React.createElement(DashboardTab, { settings, setSettings }),
+                        activeTab === 'queue' && React.createElement(QueueTab, { queue, setQueue }),
+                        activeTab === 'challenges' && React.createElement(ChallengesTab),
+                        activeTab === 'settings' && React.createElement(SettingsTab, { settings, setSettings })
+                    )
+                )
+            );
+        }
+
+        // Dashboard Tab
+        function DashboardTab({ settings, setSettings }) {
+            return React.createElement('div', { className: 'space-y-6' },
+                React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-6' },
+                    React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
+                        React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-2' }, 'Pages Crawled'),
+                        React.createElement('p', { className: 'text-3xl font-bold text-blue-600 dark:text-blue-400' }, '0'),
+                        React.createElement('p', { className: 'text-sm text-gray-500 dark:text-gray-400' }, 'Total pages processed')
+                    ),
+                    React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
+                        React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-2' }, 'Success Rate'),
+                        React.createElement('p', { className: 'text-3xl font-bold text-green-600 dark:text-green-400' }, '0%'),
+                        React.createElement('p', { className: 'text-sm text-gray-500 dark:text-gray-400' }, 'Successful extractions')
+                    ),
+                    React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
+                        React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-2' }, 'Queue Size'),
+                        React.createElement('p', { className: 'text-3xl font-bold text-orange-600 dark:text-orange-400' }, '0'),
+                        React.createElement('p', { className: 'text-sm text-gray-500 dark:text-gray-400' }, 'Pending URLs')
+                    )
+                ),
+
+                React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
+                    React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-4' }, 'Crawl Configuration'),
+                    React.createElement('div', { className: 'space-y-4' },
+                        React.createElement('div', {},
+                            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'Starting URL'),
+                            React.createElement('input', {
+                                type: 'url',
+                                value: settings.startUrl,
+                                onChange: (e) => setSettings({ ...settings, startUrl: e.target.value }),
+                                placeholder: 'https://example.com',
+                                className: 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
+                            })
+                        ),
+                        React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-4' },
+                            React.createElement('div', {},
+                                React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'Max Depth'),
+                                React.createElement('input', {
+                                    type: 'number',
+                                    value: settings.depth,
+                                    onChange: (e) => setSettings({ ...settings, depth: parseInt(e.target.value) }),
+                                    min: 1,
+                                    max: 10,
+                                    className: 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
+                                })
+                            ),
+                            React.createElement('div', {},
+                                React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'Max Pages'),
+                                React.createElement('input', {
+                                    type: 'number',
+                                    value: settings.maxPages,
+                                    onChange: (e) => setSettings({ ...settings, maxPages: parseInt(e.target.value) }),
+                                    min: 1,
+                                    className: 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
+                                })
+                            )
+                        ),
+                        React.createElement('div', {},
+                            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'Export Formats'),
+                            React.createElement('div', { className: 'flex space-x-4' },
+                                ['json', 'md', 'html', 'pdf'].map(format =>
+                                    React.createElement('label', { key: format, className: 'flex items-center' },
+                                        React.createElement('input', {
+                                            type: 'checkbox',
+                                            checked: settings.formats[format],
+                                            onChange: (e) => setSettings({
+                                                ...settings,
+                                                formats: { ...settings.formats, [format]: e.target.checked }
+                                            }),
+                                            className: 'mr-2'
+                                        }),
+                                        React.createElement('span', { className: 'text-sm text-gray-700 dark:text-gray-300' }, format.toUpperCase())
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        // Queue Tab
+        function QueueTab({ queue }) {
+            return React.createElement('div', { className: 'space-y-6' },
+                React.createElement('div', { className: 'bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700' },
+                    React.createElement('div', { className: 'p-6 border-b border-gray-200 dark:border-gray-700' },
+                        React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white' }, 'Crawl Queue')
+                    ),
+                    React.createElement('div', { className: 'p-6' },
+                        queue.length === 0
+                            ? React.createElement('div', { className: 'text-center py-8' },
+                                React.createElement('p', { className: 'text-gray-500 dark:text-gray-400' }, 'No URLs in queue. Start a crawl to see items here.')
+                            )
+                            : React.createElement('div', { className: 'space-y-2' },
+                                queue.map((item, index) =>
+                                    React.createElement('div', {
+                                        key: index,
+                                        className: 'flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg'
+                                    },
+                                        React.createElement('div', { className: 'flex-1' },
+                                            React.createElement('p', { className: 'text-sm font-medium text-gray-900 dark:text-white' }, item.url),
+                                            React.createElement('p', { className: 'text-xs text-gray-500 dark:text-gray-400' }, `Depth: ${item.depth}`)
+                                        ),
+                                        React.createElement('span', {
+                                            className: `px-2 py-1 text-xs rounded ${
+                                                item.status === 'done'
+                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                    : item.status === 'running'
+                                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                            }`
+                                        }, item.status)
+                                    )
+                                )
+                            )
+                    )
+                )
+            );
+        }
+
+        // Challenges Tab
+        function ChallengesTab() {
+            return React.createElement('div', { className: 'space-y-6' },
+                React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
+                    React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-4' }, 'Challenge Center'),
+                    React.createElement('p', { className: 'text-gray-600 dark:text-gray-400 mb-4' },
+                        'Handle CAPTCHA challenges and authentication prompts during crawling.'
+                    ),
+                    React.createElement('div', { className: 'text-center py-8' },
+                        React.createElement('p', { className: 'text-gray-500 dark:text-gray-400' }, 'No active challenges. Challenges will appear here when encountered during crawling.')
+                    )
+                )
+            );
+        }
+
+        // Settings Tab
+        function SettingsTab({ settings, setSettings }) {
+            return React.createElement('div', { className: 'space-y-6' },
+                React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
+                    React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-4' }, 'Execution Profile'),
+                    React.createElement('div', { className: 'space-y-4' },
+                        ['standard', 'safe', 'guided'].map(profile =>
+                            React.createElement('label', { key: profile, className: 'flex items-center p-4 border border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700' },
+                                React.createElement('input', {
+                                    type: 'radio',
+                                    name: 'profile',
+                                    value: profile,
+                                    checked: settings.profile === profile,
+                                    onChange: (e) => setSettings({ ...settings, profile: e.target.value }),
+                                    className: 'mr-4'
+                                }),
+                                React.createElement('div', {},
+                                    React.createElement('p', { className: 'font-medium text-gray-900 dark:text-white' }, 
+                                        profile.charAt(0).toUpperCase() + profile.slice(1) + ' Mode'
+                                    ),
+                                    React.createElement('p', { className: 'text-sm text-gray-500 dark:text-gray-400' },
+                                        profile === 'standard' ? 'Balanced speed and politeness (3 concurrent, 1-2s delay)' :
+                                        profile === 'safe' ? 'Ultra-respectful crawling (1 concurrent, 8-15s delay)' :
+                                        'Manual review and approval for each page'
+                                    )
+                                )
+                            )
+                        )
+                    )
+                ),
+
+                React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
+                    React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-4' }, 'Network Settings'),
+                    React.createElement('div', { className: 'space-y-4' },
+                        React.createElement('div', {},
+                            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'User Agent'),
+                            React.createElement('input', {
+                                type: 'text',
+                                placeholder: 'CrawlOps Studio/1.0',
+                                className: 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
+                            })
+                        ),
+                        React.createElement('div', {},
+                            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'Request Timeout (seconds)'),
+                            React.createElement('input', {
+                                type: 'number',
+                                defaultValue: 30,
+                                min: 5,
+                                max: 300,
+                                className: 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
+                            })
+                        )
+                    )
+                )
+            );
+        }
+
+        // Render the app
+        ReactDOM.render(React.createElement(CrawlOpsStudio), document.getElementById('root'));
+    </script>
+</body>
+</html>
