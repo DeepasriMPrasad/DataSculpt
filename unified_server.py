@@ -768,6 +768,9 @@ async def serve_frontend():
 async def serve_session_frontend():
     """Serve the session frontend JavaScript file."""
     return FileResponse("session_frontend.js", media_type="application/javascript")
+
+# Run the server
+if __name__ == "__main__":
     import uvicorn
     logger.info("Starting unified CrawlOps server...")
     uvicorn.run(
