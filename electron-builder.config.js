@@ -25,8 +25,11 @@ module.exports = {
     "!node_modules/@esbuild/netbsd-*/**",
     "!node_modules/@esbuild/openbsd-*/**",
     "!node_modules/@esbuild/sunos-*/**",
+    "!**/test/**",
+    "!**/*.md",
     "package.json"
   ],
+ "asar": true,
   "win": {
     "target": [
       {
