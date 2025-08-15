@@ -83,9 +83,20 @@
 
         // API Client - Use unified server approach
         const getApiBase = () => {
-            // Use the same origin but with /api prefix
-            const origin = window.location.origin;
-            const apiUrl = `${origin}/api`;
+            // Detect if running in Electron (desktop app)
+            const isElectron = window.navigator.userAgent.toLowerCase().indexOf(' electron/') > -1;
+            
+            let apiUrl;
+            if (isElectron) {
+                // Desktop app - use localhost
+                apiUrl = 'http://localhost:5000/api';
+                console.log('Electron environment detected - using localhost');
+            } else {
+                // Web environment - use current origin
+                const origin = window.location.origin;
+                apiUrl = `${origin}/api`;
+                console.log('Web environment detected - using current origin');
+            }
             console.log('API Base URL:', apiUrl);
             return apiUrl;
         };

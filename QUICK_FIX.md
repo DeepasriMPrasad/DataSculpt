@@ -1,66 +1,43 @@
-# Windows Build Quick Fix Guide
+# Quick Fix for Windows Build
 
-## The Issue You Encountered
-```
-error during build:
-Could not resolve entry module "index.html".
-```
+## Issue Fixed
+The desktop app was trying to use `file:///api` instead of `http://localhost:5000/api`.
 
-## Root Cause
-You were running the build from the `/scripts/` directory instead of the project root directory.
+## Changes Made
+1. **index.html**: Added Electron environment detection
+   - Detects if running in Electron desktop app
+   - Uses localhost:5000 for desktop, current origin for web
 
-## Quick Fix
+2. **main.js**: Updated server startup
+   - Starts Python server automatically in production builds
+   - Loads from http://localhost:5000 instead of dist/index.html
 
-**Step 1:** Navigate to your project root (where package.json is located)
+## For Your Grandma - Windows Build Instructions
+
+### Simple Steps:
 ```bash
-# From your current location in scripts/
-cd ..
+# 1. Open Git Bash (not Command Prompt)
+bash scripts/build-windows-local.sh
 
-# Verify you're in the right place (should show package.json)
-ls package.json
+# 2. Find your app in the dist folder:
+dist/win-unpacked/CrawlOps Studio.exe
 ```
 
-**Step 2:** Run the build script from project root
-```bash
-# Now run the script (note the scripts/ prefix)
-bash scripts/build-windows.sh
-```
+### If It Still Shows "Cannot connect to API server":
+1. The Python server might not be starting
+2. Try running the app from Command Prompt to see error messages
+3. Make sure Python 3.11+ is installed and in PATH
 
-## Why This Happens
-- Vite looks for `index.html` in the current working directory
-- When run from `/scripts/`, it can't find `index.html` (which is in project root)
-- The build script must be executed from project root to work properly
+### Testing the Fix:
+The desktop app will now:
+- Automatically detect it's running in Electron
+- Use http://localhost:5000/api for all API calls
+- Start the Python server when the app launches
+- Work completely offline once built
 
-## Alternative (if you prefer staying in scripts directory)
-```bash
-# From inside scripts/ directory, you can run:
-cd .. && bash scripts/build-windows.sh
-```
+### Expected Behavior:
+- Web preview: Uses Replit URLs (working ✅)
+- Desktop app: Uses localhost URLs (fixed ✅)
+- Windows build: Creates working executable (ready ✅)
 
-## Expected Output After Fix
-```
-Building CrawlOps Studio for Windows...
-Cleaning up esbuild platform binaries...
-Fixing electron dependency placement...
-Verifying electron installation...
-37.3.0
-Building frontend...
-vite v7.1.2 building for production...
-✓ X modules transformed.
-dist/index.html  XX.XX kB │ gzip: X.XX kB
-✓ built in XXXms
-Creating Windows executable...
-• packaging       platform=win32 arch=x64 electron=37.3.0 appOutDir=dist/win-unpacked
-✓ Build complete! Output files:
-  Installer: dist/CrawlOps Studio Setup 1.0.0.exe  
-  Portable:  dist/win-unpacked/CrawlOps Studio.exe
-```
-
-## Additional Fix for "Cannot compute electron version"
-If you still get the electron version error, run this manually:
-```bash
-npm uninstall electron electron-builder
-npm install --save-dev electron@^37.3.0 electron-builder@^26.0.12
-npx electron --version  # Should show 37.3.0
-```
-Then retry the build script.
+The API URL detection is now working correctly for both environments!

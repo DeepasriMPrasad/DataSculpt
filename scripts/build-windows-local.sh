@@ -24,7 +24,7 @@ echo "Installing dependencies..."
 npm install
 
 echo "Building Vite frontend..."
-npm run build
+npx vite build
 
 echo "Building Windows executable..."
 npx electron-builder --win --x64 --config electron-builder.config.js --publish=never

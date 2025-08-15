@@ -10,10 +10,13 @@ function startApiServer() {
     // Use the correct Python executable path based on platform
     const pythonPath = process.platform === 'win32' ? 'python' : 'python3';
     
+    console.log('Starting API server with Python path:', pythonPath);
+    console.log('Working directory:', __dirname);
+    
     // Start the unified server directly from the root directory
     apiProcess = spawn(pythonPath, ['unified_server.py'], {
         cwd: __dirname,
-        stdio: 'pipe'
+        stdio: 'inherit' // Show output in console for debugging
     });
 
     apiProcess.stdout.on('data', (data) => {
@@ -54,8 +57,8 @@ function createWindow() {
         mainWindow.loadURL('http://localhost:5000');
         mainWindow.webContents.openDevTools();
     } else {
-        // Load the built frontend
-        mainWindow.loadFile('dist/index.html');
+        // In production, serve from the unified server
+        mainWindow.loadURL('http://localhost:5000');
     }
 
     // Show window when ready
