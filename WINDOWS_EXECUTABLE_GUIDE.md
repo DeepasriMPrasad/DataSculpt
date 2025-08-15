@@ -1,13 +1,19 @@
 # Windows Executable Creation Guide
 
 ## Current Status ✅
-Your CrawlOps Studio application is fully functional as a web application:
-- **Backend API**: Running on port 8000 with content extraction working
-- **Frontend**: Professional React interface on port 5000
-- **Core Features**: All crawling functionality operational
+Your CrawlOps Studio application is fully functional as a unified web application:
+- **Unified Server**: Frontend and API both running on port 5000 (solved networking issues)
+- **Content Extraction**: Successfully tested with real sites (example.com, scrapethissite.com)
+- **Download Features**: JSON, Markdown, HTML, and Text export with automatic file naming
+- **Status Updates**: Real-time status indicators (Stopped → Running → Completed)
+- **Professional UI**: Complete dashboard with stats, queue management, and settings
 
-## Quick Fix for CORS Issue
-The API connection issue you saw has been resolved by updating CORS settings. The application should now work properly in the browser.
+## Recent Improvements ✅
+- Fixed API connectivity by creating unified server architecture
+- Added download buttons for all export formats
+- Improved status tracking with completion indicators
+- Enhanced queue display with timestamps and word counts
+- All features tested and working correctly
 
 ## Creating Windows Executable (.exe)
 
@@ -27,12 +33,15 @@ The API connection issue you saw has been resolved by updating CORS settings. Th
    npm install --save-dev electron electron-builder
    
    # Install Python dependencies
-   pip install fastapi uvicorn crawl4ai aiohttp beautifulsoup4 pydantic
+   pip install fastapi uvicorn crawl4ai aiohttp beautifulsoup4 pydantic python-multipart pypdf pdfminer.six tldextract
    ```
 
 3. **Build Windows Executable**:
    ```bash
-   # Package the application
+   # Start the unified server first to test
+   python unified_server.py
+   
+   # Then package the application
    npm run build:win
    
    # Output will be in dist/ folder:
@@ -42,20 +51,22 @@ The API connection issue you saw has been resolved by updating CORS settings. Th
 
 ### Method 2: Replit Web Version (Immediate Use)
 
-**Current web version is ready to use right now:**
+**Current web version is production-ready:**
 - Access at: `your-replit-url.replit.dev`
-- Full functionality available
-- Save as desktop bookmark for easy access
-- No installation required
+- All features working: crawling, downloads, queue management
+- Real-time status updates and professional UI
+- Download results in JSON, Markdown, HTML, or Text formats
+- Save as desktop bookmark for immediate access
 
 ### Features in Windows Executable
 
 The desktop version will include:
 - **Native Desktop App**: Runs as standalone Windows application
-- **Embedded API Server**: Python backend bundled inside
-- **File System Access**: Save extractions directly to local files
+- **Unified Server**: Single port architecture for reliability
+- **File System Access**: Direct save to local Downloads folder
 - **System Integration**: Windows notifications and file associations
 - **Offline Capability**: No internet required except for crawling target sites
+- **Multiple Export Formats**: JSON, Markdown, HTML, Text with auto-naming
 
 ### Build Configuration Created
 
