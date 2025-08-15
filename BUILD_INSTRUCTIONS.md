@@ -1,41 +1,55 @@
 # CrawlOps Studio - Build Instructions
 
-## Windows Build
+## Quick Windows Build (Recommended)
 
-**Run these commands:**
+**Use the build script (handles all fixes automatically):**
 ```bash
+# For Git Bash/MSYS (recommended)
+bash scripts/build-windows.sh
+
+# For Command Prompt  
+scripts\build-windows.bat
+```
+
+**Output files:**
+- `dist/CrawlOps Studio Setup 1.0.0.exe` (installer)
+- `dist/win-unpacked/CrawlOps Studio.exe` (portable)
+
+## Manual Windows Build
+
+If you prefer manual commands:
+```bash
+# Clean esbuild platform binaries (prevents ENOENT errors)
+rm -rf node_modules/@esbuild/aix-ppc64 node_modules/@esbuild/android-* node_modules/@esbuild/darwin-* node_modules/@esbuild/linux-*
+
+# Fix electron dependency
 npm uninstall electron
 npm install --save-dev electron electron-builder
+
+# Build
 npx vite build
 npx electron-builder --win --x64 --config electron-builder.config.js --publish=never
 ```
 
-**Output:**
-- `dist/CrawlOps Studio Setup 1.0.0.exe` (installer)
-- `dist/win-unpacked/CrawlOps Studio.exe` (portable)
+## Other Platforms
 
-## macOS Build
-
+**macOS:**
 ```bash
-npm uninstall electron
-npm install --save-dev electron electron-builder
-npx vite build
-npx electron-builder --mac --x64 --config electron-builder.config.js --publish=never
+bash scripts/build-mac.sh
 ```
 
-## Linux Build
-
+**Linux:**
 ```bash
-npm uninstall electron
-npm install --save-dev electron electron-builder
-npx vite build
-npx electron-builder --linux --x64 --config electron-builder.config.js --publish=never
+bash scripts/build-linux.sh  
 ```
 
-## Build Scripts
+**All Platforms:**
+```bash
+bash scripts/build-all.sh
+```
 
-Alternative automated builds:
-- **Windows**: `bash scripts/build-windows.sh`
-- **macOS**: `bash scripts/build-mac.sh`
-- **Linux**: `bash scripts/build-linux.sh`
-- **All Platforms**: `bash scripts/build-all.sh`
+## Common Issues Fixed
+
+- ✅ **ENOENT scandir '@esbuild/aix-ppc64'** - Build scripts clean problematic platform binaries
+- ✅ **"electron" only allowed in devDependencies** - Scripts auto-fix dependency placement  
+- ✅ **Application entry file "index.js" corrupted** - Added proper entry point configuration

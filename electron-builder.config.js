@@ -6,13 +6,21 @@ module.exports = {
   },
   "files": [
     "dist/**/*",
-    "main.js",
+    "index.js",
+    "main.js", 
     "preload.js",
     "session_manager.py",
     "session_api.py",
     "unified_server.py",
     "node_modules/**/*",
-    "!node_modules/@esbuild/**",
+    "!node_modules/@esbuild/aix-ppc64/**",
+    "!node_modules/@esbuild/android-*/**", 
+    "!node_modules/@esbuild/darwin-*/**",
+    "!node_modules/@esbuild/freebsd-*/**",
+    "!node_modules/@esbuild/linux-*/**",
+    "!node_modules/@esbuild/netbsd-*/**",
+    "!node_modules/@esbuild/openbsd-*/**",
+    "!node_modules/@esbuild/sunos-*/**",
     "package.json"
   ],
   "win": {

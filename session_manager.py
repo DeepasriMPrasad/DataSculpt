@@ -101,39 +101,45 @@ class SessionManager:
         conn = sqlite3.connect(str(self.db_path))
         cursor = conn.cursor()
         
-        if session_name:
-            cursor.execute('''
-                SELECT id, cookies, tokens, user_agent, created_at, expires_at, notes
-                FROM sessions 
-                WHERE domain = ? AND session_name = ? AND is_active = 1 
-                AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-            ''', (domain, session_name))
-        else:
-            # Get the most recent active session
-            cursor.execute('''
-                SELECT id, cookies, tokens, user_agent, created_at, expires_at, notes
-                FROM sessions 
-                WHERE domain = ? AND is_active = 1 
-                AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
-                ORDER BY updated_at DESC LIMIT 1
-            ''', (domain,))
-        
-        result = cursor.fetchone()
-        conn.close()
-        
-        if result:
-            session_id, cookies_json, tokens_json, user_agent, created_at, expires_at, notes = result
-            return {
-                'id': session_id,
-                'cookies': json.loads(cookies_json),
-                'tokens': json.loads(tokens_json) if tokens_json else {},
-                'user_agent': user_agent,
-                'created_at': created_at,
-                'expires_at': expires_at,
-                'notes': notes
-            }
-        
-        return None
+        try:
+            if session_name:
+                cursor.execute('''
+                    SELECT id, domain, session_name, cookies, tokens, user_agent, created_at, expires_at, notes
+                    FROM sessions 
+                    WHERE domain = ? AND session_name = ? AND is_active = 1 
+                    AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+                ''', (domain, session_name))
+            else:
+                # Get the most recent active session
+                cursor.execute('''
+                    SELECT id, domain, session_name, cookies, tokens, user_agent, created_at, expires_at, notes
+                    FROM sessions 
+                    WHERE domain = ? AND is_active = 1 
+                    AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+                    ORDER BY updated_at DESC LIMIT 1
+                ''', (domain,))
+            
+            result = cursor.fetchone()
+            
+            if result:
+                session_id, domain_name, session_name_db, cookies_json, tokens_json, user_agent, created_at, expires_at, notes = result
+                
+                return {
+                    'id': session_id,
+                    'domain': domain_name,
+                    'session_name': session_name_db,
+                    'cookies': json.loads(cookies_json),
+                    'tokens': json.loads(tokens_json) if tokens_json else {},
+                    'user_agent': user_agent,
+                    'created_at': created_at,
+                    'expires_at': expires_at,
+                    'notes': notes
+                }
+            
+            return None
+            
+        finally:
+            conn.close()
     
     def list_sessions(self, domain: Optional[str] = None, active_only: bool = True) -> List[Dict[str, Any]]:
         """List all stored sessions."""

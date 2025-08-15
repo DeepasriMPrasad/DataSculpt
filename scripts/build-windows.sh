@@ -1,32 +1,35 @@
 #!/bin/bash
+# Windows Build Script for CrawlOps Studio - Fixed Version
+# Handles esbuild platform binary issues and dependency fixes
+
+set -e
+
 echo "Building CrawlOps Studio for Windows..."
 
-# Check if Node.js is installed
-if ! command -v node &> /dev/null; then
-    echo "Error: Node.js is not installed or not in PATH"
-    echo "Please install Node.js from https://nodejs.org/"
-    exit 1
-fi
+# Step 1: Clean up problematic platform binaries that cause ENOENT errors
+echo "Cleaning up esbuild platform binaries..."
+find node_modules -name "@esbuild" -type d -exec find {} -name "*aix*" -type d -exec rm -rf {} + 2>/dev/null || true
+find node_modules -name "@esbuild" -type d -exec find {} -name "*android*" -type d -exec rm -rf {} + 2>/dev/null || true
+find node_modules -name "@esbuild" -type d -exec find {} -name "*darwin*" -type d -exec rm -rf {} + 2>/dev/null || true
+find node_modules -name "@esbuild" -type d -exec find {} -name "*freebsd*" -type d -exec rm -rf {} + 2>/dev/null || true
+find node_modules -name "@esbuild" -type d -exec find {} -name "*linux*" -type d -exec rm -rf {} + 2>/dev/null || true
+find node_modules -name "@esbuild" -type d -exec find {} -name "*netbsd*" -type d -exec rm -rf {} + 2>/dev/null || true
+find node_modules -name "@esbuild" -type d -exec find {} -name "*openbsd*" -type d -exec rm -rf {} + 2>/dev/null || true
+find node_modules -name "@esbuild" -type d -exec find {} -name "*sunos*" -type d -exec rm -rf {} + 2>/dev/null || true
 
-# Install dependencies if needed
-echo "Installing dependencies..."
-npm install
-
-# Fix electron dependency location and install electron-builder
-echo "Fixing electron dependency and installing electron-builder..."
-npm uninstall electron
+# Step 2: Fix electron dependency placement
+echo "Fixing electron dependency placement..."
+npm uninstall electron 2>/dev/null || true
 npm install --save-dev electron electron-builder
 
-# Build the frontend
-echo "Building frontend with Vite..."
+# Step 3: Build frontend
+echo "Building frontend..."
 npx vite build
 
-# Create Windows executable
-echo "Packaging Windows executable..."
+# Step 4: Create Windows executable
+echo "Creating Windows executable..."
 npx electron-builder --win --x64 --config electron-builder.config.js --publish=never
 
-echo ""
-echo "Build complete! Check the dist/ folder for:"
-echo "- CrawlOps Studio Setup 1.0.0.exe (installer)"
-echo "- win-unpacked/CrawlOps Studio.exe (portable)"
-echo ""
+echo "✓ Build complete! Output files:"
+echo "  Installer: dist/CrawlOps Studio Setup 1.0.0.exe"  
+echo "  Portable:  dist/win-unpacked/CrawlOps Studio.exe"

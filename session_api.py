@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 from session_manager import session_manager
+import sqlite3
 
 # Create router for session endpoints
 router = APIRouter(prefix="/api/sessions", tags=["Session Management"])
