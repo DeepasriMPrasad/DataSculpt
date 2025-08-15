@@ -7,11 +7,24 @@ This solves the Replit networking issues by having everything on port 5000
 import os
 import sys
 import logging
+import platform
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+# Fix Windows event loop policy for aiodns compatibility
+if platform.system() == 'Windows':
+    try:
+        import asyncio
+        if sys.version_info >= (3, 8):
+            # Windows ProactorEventLoop doesn't support aiodns
+            # Force SelectorEventLoop on Windows
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+            logging.info("Set Windows SelectorEventLoop policy for aiodns compatibility")
+    except Exception as e:
+        logging.warning(f"Failed to set Windows event loop policy: {e}")
 
 # Add the API directory to the path
 sys.path.insert(0, str(Path(__file__).parent / "apps" / "api"))
