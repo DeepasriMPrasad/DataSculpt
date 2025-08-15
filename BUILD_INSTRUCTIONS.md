@@ -2,7 +2,10 @@
 
 ## Quick Windows Build (Recommended)
 
-**IMPORTANT**: You must run this from the **project root directory**, not from the scripts folder.
+**IMPORTANT**: 
+- Windows executables must be built on Windows (not from Replit/Linux)
+- You must run this from the **project root directory**, not from the scripts folder
+- See `WINDOWS_EXECUTABLE_GUIDE.md` for detailed Windows build instructions
 
 **Use the build script (handles all fixes automatically):**
 ```bash

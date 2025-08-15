@@ -55,6 +55,7 @@ Preferred communication style: Simple, everyday language.
   - `session_frontend.js` (SessionManager class for frontend integration)
   - `index.js` (proper entry point for package.json)
 - **Status**: Windows build configuration fully resolved with comprehensive error handling
+- **Windows Build Note**: Executable must be built on Windows machine, not from Replit (Linux requires wine for cross-compilation)
 
 ### Multi-Platform Executable Build Setup ✅
 - **Issue**: User getting "Missing script: build:win" error on local Windows machine
