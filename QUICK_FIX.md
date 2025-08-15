@@ -14,7 +14,7 @@ npm install --save-dev electron electron-builder
 
 # Now build for Windows
 npx vite build
-npx electron-builder --win --x64 --config electron-builder.config.js
+npx electron-builder --win --x64 --config electron-builder.config.js --publish=never
 ```
 
 ## Alternative: Use the Updated Build Script

@@ -7,6 +7,14 @@ module.exports = {
   "files": [
     "dist/**/*",
     "node_modules/**/*",
+    "!node_modules/@esbuild/aix-ppc64",
+    "!node_modules/@esbuild/android-*",
+    "!node_modules/@esbuild/darwin-*",
+    "!node_modules/@esbuild/freebsd-*",
+    "!node_modules/@esbuild/linux-*",
+    "!node_modules/@esbuild/netbsd-*",
+    "!node_modules/@esbuild/openbsd-*",
+    "!node_modules/@esbuild/sunos-*",
     "package.json"
   ],
   "win": {

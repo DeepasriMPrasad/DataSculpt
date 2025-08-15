@@ -23,7 +23,7 @@ npx vite build
 
 # Create Windows executable
 echo "Packaging Windows executable..."
-npx electron-builder --win --x64 --config electron-builder.config.js
+npx electron-builder --win --x64 --config electron-builder.config.js --publish=never
 
 echo ""
 echo "Build complete! Check the dist/ folder for:"

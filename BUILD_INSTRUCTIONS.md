@@ -20,7 +20,7 @@ npm install --save-dev electron electron-builder
 npx vite build
 
 # Create Windows executable
-npx electron-builder --win --x64 --config electron-builder.config.js
+npx electron-builder --win --x64 --config electron-builder.config.js --publish=never
 ```
 
 ### Alternative: Use Build Script
@@ -75,6 +75,10 @@ npm install
 rm -rf node_modules package-lock.json
 npm install
 ```
+
+**"ENOENT: no such file or directory, scandir '@esbuild/aix-ppc64'"**
+- Fixed by excluding unnecessary esbuild platform binaries from packaging
+- The updated electron-builder.config.js handles this automatically
 
 **"Package electron is only allowed in devDependencies"**
 - Fixed by moving electron from dependencies to devDependencies
