@@ -131,9 +131,16 @@
                         timeout: 30
                     });
                     console.log('Crawl started:', response);
+                    // Add a mock queue item to show progress
+                    setQueue([{
+                        url: settings.startUrl,
+                        depth: 0,
+                        status: 'done'
+                    }]);
                 } catch (error) {
                     console.error('Failed to start crawl:', error);
                     setCrawlStatus('stopped');
+                    alert('Failed to start crawl. Please check the URL and try again.');
                 }
             };
 

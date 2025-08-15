@@ -16,7 +16,7 @@ router = APIRouter()
 # Initialize crawl4ai service
 crawl_service = Crawl4aiService()
 
-@router.post("/", response_model=ExtractResponse)
+@router.post("/extract", response_model=ExtractResponse)
 async def extract_content(request: ExtractRequest, background_tasks: BackgroundTasks):
     """
     Extract content from a URL using crawl4ai.

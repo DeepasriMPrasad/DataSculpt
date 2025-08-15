@@ -38,8 +38,8 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(health.router, prefix="/health", tags=["health"])
-app.include_router(extract.router, prefix="/extract", tags=["extraction"])
+app.include_router(health.router, tags=["health"])
+app.include_router(extract.router, tags=["extraction"])
 app.include_router(report.router, prefix="/report", tags=["reporting"])
 
 @app.get("/")
