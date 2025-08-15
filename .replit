@@ -37,12 +37,12 @@ outputType = "webview"
 name = "Windows Build"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx vite build && npx electron-builder --win --x64 --config electron-builder.config.js"
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm uninstall electron && npm install --save-dev electron electron-builder && npx vite build && npx electron-builder --win --x64 --config electron-builder.config.js --publish=never"
 
 [[ports]]
 localPort = 5000
