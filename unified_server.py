@@ -36,12 +36,40 @@ sys.path.insert(0, str(Path(__file__).parent / "apps" / "api"))
 # Import session management
 from session_api import router as session_router
 
-# Configure logging
+# Configure comprehensive logging system
+log_dir = Path("./logs")
+log_dir.mkdir(exist_ok=True)
+
+# Create detailed logging configuration
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        # Console output
+        logging.StreamHandler(),
+        # Main application log
+        logging.FileHandler(log_dir / "crawlops_server.log"),
+        # Detailed scraping log
+        logging.FileHandler(log_dir / "scraping_detailed.log")
+    ]
 )
+
+# Create specialized loggers
 logger = logging.getLogger(__name__)
+scraping_logger = logging.getLogger('scraping')
+api_logger = logging.getLogger('api')
+
+# Configure scraping logger with separate file
+scraping_handler = logging.FileHandler(log_dir / "scraping_activity.log")
+scraping_handler.setFormatter(logging.Formatter('%(asctime)s - SCRAPING - %(levelname)s - %(message)s'))
+scraping_logger.addHandler(scraping_handler)
+scraping_logger.setLevel(logging.DEBUG)
+
+# Configure API logger
+api_handler = logging.FileHandler(log_dir / "api_requests.log")
+api_handler.setFormatter(logging.Formatter('%(asctime)s - API - %(levelname)s - %(message)s'))
+api_logger.addHandler(api_handler)
+api_logger.setLevel(logging.INFO)
 
 # Create FastAPI app
 app = FastAPI(
@@ -107,14 +135,19 @@ async def health_check():
 @app.post("/api/crawl/start")
 async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundTasks):
     """Start a new crawl operation."""
+    api_logger.info(f"Crawl request received: {crawl_request.url}")
+    scraping_logger.info(f"Starting crawl for {crawl_request.url} - Max Depth: {crawl_request.max_depth}, Max Pages: {crawl_request.max_pages}, Ignore Robots: {crawl_request.ignore_robots}")
+    
     try:
         # Validate URL
         if not crawl_request.url.startswith(("http://", "https://")):
+            api_logger.error(f"Invalid URL format: {crawl_request.url}")
             raise HTTPException(status_code=400, detail="Invalid URL format")
         
         # Update crawl state
         crawl_state["status"] = "running"
         crawl_state["queue_size"] = 1
+        scraping_logger.debug(f"Crawl state updated: {crawl_state}")
         
         # Perform actual content extraction using crawl4ai
         try:
@@ -166,6 +199,8 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                     
         except Exception as crawl4ai_error:
             # Fallback to BeautifulSoup + aiohttp extraction when crawl4ai fails
+            scraping_logger.warning(f"crawl4ai failed for {crawl_request.url}: {str(crawl4ai_error)}")
+            scraping_logger.info(f"Falling back to HTTP + BeautifulSoup extraction for {crawl_request.url}")
             logger.warning(f"crawl4ai failed ({crawl4ai_error}), using HTTP + BeautifulSoup extraction")
             import aiohttp
             
@@ -219,10 +254,12 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                     if links:
                         markdown_content += f"\n\n## Links\n" + "\n".join([f"- {link}" for link in links])
                     
-                    # Log robots.txt preference
+                    # Log robots.txt preference with detailed context
                     if crawl_request.ignore_robots:
+                        scraping_logger.warning(f"ROBOTS.TXT IGNORED for {crawl_request.url} - Enterprise crawling mode enabled")
                         logger.info(f"Ignoring robots.txt restrictions for {crawl_request.url}")
                     else:
+                        scraping_logger.info(f"ROBOTS.TXT RESPECTED for {crawl_request.url} - Following website crawling guidelines")
                         logger.info(f"Respecting robots.txt restrictions for {crawl_request.url}")
                     
                     # Save to output folder
@@ -263,6 +300,11 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                     with open(txt_file, 'w', encoding='utf-8') as f:
                         f.write(text_content)
                     
+                    # Detailed logging for successful extraction
+                    scraping_logger.info(f"SUCCESS: Extracted {word_count} words from {crawl_request.url}")
+                    scraping_logger.debug(f"Files saved: {[json_file.name, md_file.name, html_file.name, txt_file.name]}")
+                    scraping_logger.debug(f"Title extracted: {title_text}")
+                    scraping_logger.debug(f"Links found: {len(links)}, Images found: {len(images)}")
                     logger.info(f"Content extracted and saved to {output_dir} - {word_count} words")
                     
                     return {
@@ -290,9 +332,13 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                         }
                     }
         except Exception as e:
+            scraping_logger.error(f"HTTP extraction failed for {crawl_request.url}: {str(e)}")
+            api_logger.error(f"Crawl request failed: {crawl_request.url} - Error: {str(e)}")
             logger.error(f"Failed to crawl {crawl_request.url}: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to crawl: {str(e)}")
     except Exception as e:
+        scraping_logger.error(f"CRAWL FAILED for {crawl_request.url}: {str(e)}")
+        api_logger.error(f"Crawl request failed: {crawl_request.url} - Error: {str(e)}")
         logger.error(f"Failed to start crawl: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to start crawl: {str(e)}")
 
