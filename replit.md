@@ -10,15 +10,19 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (August 15, 2025)
 
-### Windows Executable Build Setup ✅
+### Multi-Platform Executable Build Setup ✅
 - **Issue**: User getting "Missing script: build:win" error on local Windows machine
 - **Root Cause**: Project uses Replit workflows instead of traditional npm scripts
-- **Solution**: Created manual build commands and build scripts for local Windows development
+- **Solution**: Created manual build commands and build scripts for Windows, macOS, and Linux
 - **Files Added**: 
   - `scripts/build-windows.bat` (Windows Command Prompt)
   - `scripts/build-windows.sh` (Git Bash/WSL)
-  - `BUILD_INSTRUCTIONS.md` (Complete local build guide)
-- **Status**: User can now build Windows executable locally using provided commands
+  - `scripts/build-mac.sh` (macOS build script)
+  - `scripts/build-linux.sh` (Linux build script)
+  - `scripts/build-all.sh` (Universal multi-platform build)
+  - `BUILD_INSTRUCTIONS.md` (Complete multi-platform build guide)
+- **Files Modified**: `electron-builder.config.js` (added macOS and Linux targets)
+- **Status**: Complete multi-platform build support for Windows, macOS, and Linux
 
 ### Windows Compatibility Fixes ✅
 - **Issue**: aiodns SelectorEventLoop error on Windows local filesystem

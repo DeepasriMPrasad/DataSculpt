@@ -1,0 +1,41 @@
+#!/bin/bash
+echo "Building CrawlOps Studio for all platforms..."
+
+# Check if Node.js is installed
+if ! command -v node &> /dev/null; then
+    echo "Error: Node.js is not installed or not in PATH"
+    echo "Please install Node.js from https://nodejs.org/"
+    exit 1
+fi
+
+# Install dependencies if needed
+echo "Installing dependencies..."
+npm install
+
+# Install electron-builder as dev dependency
+echo "Installing electron-builder..."
+npm install --save-dev electron-builder
+
+# Build the frontend
+echo "Building frontend with Vite..."
+npx vite build
+
+# Build for all platforms
+echo "Packaging for all platforms..."
+npx electron-builder --publish=never --config electron-builder.config.js
+
+echo ""
+echo "Build complete! Check the dist/ folder for platform-specific executables:"
+echo ""
+echo "Windows:"
+echo "- CrawlOps Studio Setup 1.0.0.exe (installer)"
+echo "- win-unpacked/CrawlOps Studio.exe (portable)"
+echo ""
+echo "macOS:"
+echo "- CrawlOps Studio-1.0.0.dmg (installer)"
+echo "- mac/CrawlOps Studio.app (application bundle)"
+echo ""
+echo "Linux:"
+echo "- CrawlOps Studio-1.0.0.AppImage (portable)"
+echo "- CrawlOps Studio-1.0.0.deb (Debian/Ubuntu installer)"
+echo ""

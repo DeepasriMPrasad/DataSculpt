@@ -94,6 +94,69 @@ The resulting executable is completely self-contained and includes:
 
 Recipients need only the executable file - no additional software installation required.
 
-## Status: Ready for Build ✅
+## Multi-Platform Build Support ✅
 
-All configuration files are in place. The Windows Build workflow is ready to create your executable.
+### macOS Build
+
+**Commands:**
+```bash
+# Install dependencies
+npm install
+npm install --save-dev electron-builder
+
+# Build for macOS
+npx vite build
+npx electron-builder --mac --config electron-builder.config.js
+```
+
+**Or use the build script:**
+```bash
+bash scripts/build-mac.sh
+```
+
+**Output:**
+- `CrawlOps Studio-1.0.0.dmg` (installer)
+- `mac/CrawlOps Studio.app` (application bundle)
+
+### Linux Build
+
+**Commands:**
+```bash
+# Install dependencies
+npm install
+npm install --save-dev electron-builder
+
+# Build for Linux
+npx vite build
+npx electron-builder --linux --config electron-builder.config.js
+```
+
+**Or use the build script:**
+```bash
+bash scripts/build-linux.sh
+```
+
+**Output:**
+- `CrawlOps Studio-1.0.0.AppImage` (portable)
+- `CrawlOps Studio-1.0.0.deb` (Debian/Ubuntu installer)
+- `linux-unpacked/crawlops-studio` (executable)
+
+### Build All Platforms
+
+**Build everything at once:**
+```bash
+bash scripts/build-all.sh
+```
+
+This creates Windows, macOS, and Linux executables in one command.
+
+## Cross-Platform Notes
+
+- **Windows**: Requires Windows machine for proper code signing
+- **macOS**: Requires macOS machine for proper app notarization
+- **Linux**: Can be built on any platform but works best on Linux
+- **Universal**: The `build-all.sh` script works on any Unix-like system
+
+## Status: Ready for Multi-Platform Build ✅
+
+All configuration files and build scripts are in place for Windows, macOS, and Linux.
