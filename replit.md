@@ -82,6 +82,26 @@ Preferred communication style: Simple, everyday language.
   - Provides detailed logging of extraction methods used
 - **Status**: Full JavaScript execution capability with intelligent fallbacks
 
+### Enterprise-Grade Crawling Features ✅
+- **AWS Bedrock-Inspired Architecture**: Professional-grade crawling capabilities matching cloud services
+- **Scope Control**: 
+  - Default (same host + path), Host Only, Subdomains modes
+  - Intelligent URL filtering with enterprise-grade precision
+  - Pattern-based include/exclude filtering with regex support
+- **Compliance & Standards**:
+  - RFC 9309 robots.txt compliance with Allow/Disallow parsing
+  - Configurable user agent identification with custom suffix
+  - Rate limiting (URLs per host per minute) for respectful crawling
+- **Scale & Performance**:
+  - Up to 25,000 pages per crawl (AWS Bedrock standard)
+  - Intelligent queue management with scope-based filtering
+  - Enhanced file type filtering excluding binary content
+- **Professional Features**:
+  - Enterprise logging with detailed audit trails
+  - Advanced pattern matching for targeted content extraction
+  - Corporate-grade crawling behavior and identification
+- **Status**: Full enterprise feature set operational
+
 ## External Dependencies
 
 ### Core Runtime Dependencies

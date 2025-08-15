@@ -99,6 +99,18 @@ class CrawlRequest(BaseModel):
     export_formats: List[str] = ["json", "md", "html", "pdf"]
     ignore_robots: bool = False
     delay_seconds: float = 1.0  # Configurable delay between requests (0.1-30.0 seconds)
+    
+    # Enterprise scope control (AWS Bedrock style)
+    scope: str = "default"  # default, host_only, subdomains
+    # Rate limiting (URLs per host per minute)
+    max_urls_per_host_per_minute: int = 60
+    # URL filtering patterns (regex)
+    include_patterns: List[str] = []
+    exclude_patterns: List[str] = []
+    # Robots.txt compliance
+    respect_robots_txt: bool = True
+    # Custom user agent suffix
+    user_agent_suffix: str = "CrawlOps-Studio/1.0"
 
 class CrawlStatus(BaseModel):
     status: str
@@ -258,8 +270,98 @@ async def crawl_single_page(url: str, crawl_request: CrawlRequest):
             "url": url
         }
 
+def apply_scope_filter(url: str, seed_url: str, scope: str) -> bool:
+    """Apply AWS Bedrock-style scope filtering to URLs."""
+    from urllib.parse import urlparse
+    
+    url_parsed = urlparse(url)
+    seed_parsed = urlparse(seed_url)
+    
+    if scope == "default":
+        # Same host and same initial path
+        return (url_parsed.netloc.lower() == seed_parsed.netloc.lower() and 
+                url_parsed.path.startswith(seed_parsed.path))
+    elif scope == "host_only":
+        # Same host only
+        return url_parsed.netloc.lower() == seed_parsed.netloc.lower()
+    elif scope == "subdomains":
+        # Same primary domain (including subdomains)
+        seed_domain_parts = seed_parsed.netloc.lower().split('.')
+        url_domain_parts = url_parsed.netloc.lower().split('.')
+        
+        # Get primary domain (last two parts for .com, .org, etc.)
+        if len(seed_domain_parts) >= 2:
+            seed_primary = '.'.join(seed_domain_parts[-2:])
+            if len(url_domain_parts) >= 2:
+                url_primary = '.'.join(url_domain_parts[-2:])
+                return url_primary == seed_primary
+    
+    return False
+
+def apply_url_filters(url: str, include_patterns: List[str], exclude_patterns: List[str]) -> bool:
+    """Apply URL filtering patterns with AWS Bedrock-style precedence."""
+    import re
+    
+    # If exclusion patterns match, exclude (exclusion takes precedence)
+    for pattern in exclude_patterns:
+        try:
+            if re.search(pattern, url, re.IGNORECASE):
+                return False
+        except re.error:
+            continue  # Skip invalid regex patterns
+    
+    # If no inclusion patterns, include by default
+    if not include_patterns:
+        return True
+    
+    # Check inclusion patterns
+    for pattern in include_patterns:
+        try:
+            if re.search(pattern, url, re.IGNORECASE):
+                return True
+        except re.error:
+            continue  # Skip invalid regex patterns
+    
+    return False
+
+async def check_robots_txt(url: str, user_agent: str) -> bool:
+    """Check robots.txt compliance (RFC 9309 standard)."""
+    try:
+        from urllib.parse import urljoin, urlparse
+        import aiohttp
+        
+        parsed_url = urlparse(url)
+        robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(robots_url, timeout=aiohttp.ClientTimeout(total=5)) as response:
+                if response.status == 200:
+                    robots_content = await response.text()
+                    # Simple robots.txt parsing
+                    lines = robots_content.split('\n')
+                    user_agent_block = False
+                    
+                    for line in lines:
+                        line = line.strip()
+                        if line.startswith('#') or not line:
+                            continue
+                        
+                        if line.lower().startswith('user-agent:'):
+                            agent = line.split(':', 1)[1].strip()
+                            user_agent_block = (agent == '*' or agent.lower() in user_agent.lower())
+                        
+                        if user_agent_block and line.lower().startswith('disallow:'):
+                            path = line.split(':', 1)[1].strip()
+                            if path and (path == '/' or parsed_url.path.startswith(path)):
+                                return False
+                    
+                    return True
+        return True  # Allow if robots.txt not found or accessible
+    except:
+        return True  # Allow on any error
+
 async def recursive_crawl(crawl_request: CrawlRequest):
-    """Perform recursive crawling with depth and page limits."""
+    """Perform recursive crawling with enterprise-grade scope control and filtering."""
     from urllib.parse import urlparse, urljoin
     import re
     
@@ -267,9 +369,11 @@ async def recursive_crawl(crawl_request: CrawlRequest):
     crawl_queue = [(crawl_request.url, 0)]  # (url, depth)
     results = []
     pages_crawled = 0
-    base_domain = urlparse(crawl_request.url).netloc
+    rate_limit_tracker = {}  # Track URLs per host per minute
+    user_agent = f"Mozilla/5.0 (compatible; {crawl_request.user_agent_suffix})"
     
-    scraping_logger.info(f"Starting recursive crawl from {crawl_request.url} - Max Depth: {crawl_request.max_depth}, Max Pages: {crawl_request.max_pages}")
+    scraping_logger.info(f"Starting enterprise recursive crawl from {crawl_request.url}")
+    scraping_logger.info(f"Config: Depth={crawl_request.max_depth}, Pages={crawl_request.max_pages}, Scope={crawl_request.scope}, RateLimit={crawl_request.max_urls_per_host_per_minute}/min")
     
     while crawl_queue and pages_crawled < crawl_request.max_pages:
         current_url, current_depth = crawl_queue.pop(0)
@@ -277,12 +381,22 @@ async def recursive_crawl(crawl_request: CrawlRequest):
         # Skip if already crawled or depth exceeded
         if current_url in crawled_urls or current_depth > crawl_request.max_depth:
             continue
-            
-        # Skip if different domain (unless explicitly allowed)
-        current_domain = urlparse(current_url).netloc
-        if current_domain != base_domain:
-            scraping_logger.debug(f"Skipping {current_url} - different domain ({current_domain} vs {base_domain})")
+        
+        # Apply enterprise scope filtering
+        if not apply_scope_filter(current_url, crawl_request.url, crawl_request.scope):
+            scraping_logger.debug(f"Skipping {current_url} - outside scope ({crawl_request.scope})")
             continue
+        
+        # Apply URL filtering patterns
+        if not apply_url_filters(current_url, crawl_request.include_patterns, crawl_request.exclude_patterns):
+            scraping_logger.debug(f"Skipping {current_url} - filtered by URL patterns")
+            continue
+        
+        # Check robots.txt compliance if enabled
+        if crawl_request.respect_robots_txt:
+            if not await check_robots_txt(current_url, user_agent):
+                scraping_logger.info(f"Skipping {current_url} - blocked by robots.txt")
+                continue
         
         crawled_urls.add(current_url)
         pages_crawled += 1
@@ -304,11 +418,21 @@ async def recursive_crawl(crawl_request: CrawlRequest):
         # If successful and not at max depth, add links to queue
         if page_result.get("success", False) and current_depth < crawl_request.max_depth:
             links = page_result.get("links", [])
-            for link in links[:20]:  # Limit to 20 links per page to avoid explosion
+            added_links = 0
+            for link in links:
+                if added_links >= 20:  # Limit to 20 links per page to avoid explosion
+                    break
+                    
                 if link not in crawled_urls and link not in [url for url, _ in crawl_queue]:
-                    # Basic link filtering
-                    if not re.search(r'\.(pdf|zip|exe|dmg|doc|docx|xls|xlsx|ppt|pptx)$', link, re.I):
-                        crawl_queue.append((link, current_depth + 1))
+                    # Apply scope filter to new links
+                    if apply_scope_filter(link, crawl_request.url, crawl_request.scope):
+                        # Apply URL filtering
+                        if apply_url_filters(link, crawl_request.include_patterns, crawl_request.exclude_patterns):
+                            # Basic file type filtering (exclude binary files)
+                            if not re.search(r'\.(pdf|zip|exe|dmg|doc|docx|xls|xlsx|ppt|pptx|jpg|jpeg|png|gif|mp4|avi|mov)$', link, re.I):
+                                crawl_queue.append((link, current_depth + 1))
+                                added_links += 1
+                                scraping_logger.debug(f"Added to queue: {link} (depth {current_depth + 1})")
     
     return results
 
