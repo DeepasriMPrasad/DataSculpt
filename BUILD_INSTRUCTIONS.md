@@ -12,8 +12,9 @@ Since you're building on your local Windows machine, here are the exact steps:
 # Install dependencies
 npm install
 
-# Install electron-builder
-npm install --save-dev electron-builder
+# Fix electron dependency issue and install electron-builder
+npm uninstall electron
+npm install --save-dev electron electron-builder
 
 # Build frontend
 npx vite build
@@ -44,7 +45,17 @@ After running the build commands, you'll find in the `dist/` folder:
 
 ## Why No npm Scripts?
 
-This project was designed for Replit workflows, not traditional npm scripts. The build scripts I provided above replace the missing `npm run build:win` command.
+This project was designed for Replit workflows, not traditional npm scripts. The build scripts replace the missing `npm run build:win` command.
+
+## Common Issues Fixed
+
+### Electron Dependency Error ✅
+**Problem**: `Package "electron" is only allowed in "devDependencies"`
+**Solution**: All build scripts now automatically move electron to devDependencies where electron-builder expects it.
+
+### Missing Scripts Error ✅  
+**Problem**: `npm error Missing script: "build:win"`
+**Solution**: Use the provided build scripts or manual commands instead of npm scripts.
 
 ## Troubleshooting
 
@@ -66,8 +77,9 @@ npm install
 ```
 
 **"Package electron is only allowed in devDependencies"**
-- This is already fixed in the project configuration
-- The build commands above handle this automatically
+- Fixed by moving electron from dependencies to devDependencies
+- All build commands and scripts now handle this automatically
+- Manual fix: `npm uninstall electron && npm install --save-dev electron`
 
 ## Key Files Created
 
@@ -102,7 +114,10 @@ Recipients need only the executable file - no additional software installation r
 ```bash
 # Install dependencies
 npm install
-npm install --save-dev electron-builder
+
+# Fix electron dependency issue and install electron-builder
+npm uninstall electron
+npm install --save-dev electron electron-builder
 
 # Build for macOS
 npx vite build
@@ -124,7 +139,10 @@ bash scripts/build-mac.sh
 ```bash
 # Install dependencies
 npm install
-npm install --save-dev electron-builder
+
+# Fix electron dependency issue and install electron-builder
+npm uninstall electron
+npm install --save-dev electron electron-builder
 
 # Build for Linux
 npx vite build
