@@ -170,12 +170,29 @@
                 setCrawlStatus('running');
                 
                 try {
-                    // Test API connection first
+                    // Test API connection with retry logic
                     console.log('Testing API connection...');
                     console.log('API Base URL being used:', API_BASE);
                     
-                    const healthResponse = await apiClient.get('/health');
-                    console.log('API Health:', healthResponse);
+                    let healthResponse;
+                    let retryCount = 0;
+                    const maxRetries = 3;
+                    
+                    while (retryCount < maxRetries) {
+                        try {
+                            healthResponse = await apiClient.get('/health');
+                            console.log('API Health:', healthResponse);
+                            break; // Success, exit retry loop
+                        } catch (healthError) {
+                            retryCount++;
+                            console.log(`Health check attempt ${retryCount} failed:`, healthError.message);
+                            if (retryCount >= maxRetries) {
+                                throw new Error(`API health check failed after ${maxRetries} attempts: ${healthError.message}`);
+                            }
+                            // Wait 1 second before retry
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    }
                     
                     // Start extraction
                     console.log('Starting extraction...');
@@ -233,15 +250,26 @@
                         queueSize: 0
                     }));
                     
-                    // More detailed error message
+                    // More detailed error message with debugging info
                     let errorMsg = 'Failed to start crawl: ';
-                    if (error.message.includes('fetch')) {
+                    console.log('Error type:', error.constructor.name);
+                    console.log('Error message:', error.message);
+                    console.log('API Base URL:', API_BASE);
+                    
+                    if (error.message.includes('fetch') || error.message.includes('NetworkError')) {
                         errorMsg += 'Cannot connect to API server. Please check if the backend is running.';
                     } else if (error.message.includes('CORS')) {
                         errorMsg += 'Cross-origin request blocked. Please check CORS settings.';
+                    } else if (error.message.includes('HTTP 500')) {
+                        errorMsg += 'Server error occurred. Check the server logs for details.';
+                    } else if (error.message.includes('HTTP 404')) {
+                        errorMsg += 'API endpoint not found. Please check the API configuration.';
                     } else {
                         errorMsg += error.message || 'Unknown error';
                     }
+                    
+                    // Add debugging information
+                    errorMsg += `\n\nDebug Info:\n- API URL: ${API_BASE}\n- Error Type: ${error.constructor.name}`;
                     
                     alert(errorMsg);
                 }
