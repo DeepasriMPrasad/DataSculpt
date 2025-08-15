@@ -1,0 +1,4 @@
+
+
+=== No title (https://httpbin.org/basic-auth/testuser/testpass) ===
+{ "authenticated": true, "user": "testuser" }
