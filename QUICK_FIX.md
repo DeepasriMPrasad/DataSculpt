@@ -42,13 +42,25 @@ cd .. && bash scripts/build-windows.sh
 Building CrawlOps Studio for Windows...
 Cleaning up esbuild platform binaries...
 Fixing electron dependency placement...
+Verifying electron installation...
+37.3.0
 Building frontend...
 vite v7.1.2 building for production...
 ✓ X modules transformed.
 dist/index.html  XX.XX kB │ gzip: X.XX kB
 ✓ built in XXXms
 Creating Windows executable...
+• packaging       platform=win32 arch=x64 electron=37.3.0 appOutDir=dist/win-unpacked
 ✓ Build complete! Output files:
-  Installer: dist/CrawlOps Studio Setup 1.0.0.exe
+  Installer: dist/CrawlOps Studio Setup 1.0.0.exe  
   Portable:  dist/win-unpacked/CrawlOps Studio.exe
 ```
+
+## Additional Fix for "Cannot compute electron version"
+If you still get the electron version error, run this manually:
+```bash
+npm uninstall electron electron-builder
+npm install --save-dev electron@^37.3.0 electron-builder@^26.0.12
+npx electron --version  # Should show 37.3.0
+```
+Then retry the build script.

@@ -41,6 +41,13 @@ npx electron-builder --win --x64 --config electron-builder.config.js --publish=n
 - Solution: Make sure you're running the build from the project root directory (not inside /scripts/)
 - The index.html file must be in the same folder as package.json
 
+**Error: "Cannot compute electron version from installed node modules"**
+- Solution: Run the build script again, it will reinstall electron with specific versions
+- Or manually run: `npm uninstall electron electron-builder && npm install --save-dev electron@^37.3.0 electron-builder@^26.0.12`
+
+**Error: "script src='./session_frontend.js' can't be bundled without type='module'"**
+- This is now fixed automatically - the script tag includes type="module"
+
 ## Other Platforms
 
 **macOS:**

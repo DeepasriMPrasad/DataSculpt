@@ -15,10 +15,13 @@ for /d %%i in ("node_modules\@esbuild\netbsd-*") do rmdir /s /q "%%i" 2>nul
 for /d %%i in ("node_modules\@esbuild\openbsd-*") do rmdir /s /q "%%i" 2>nul
 for /d %%i in ("node_modules\@esbuild\sunos-*") do rmdir /s /q "%%i" 2>nul
 
-REM Step 2: Fix electron dependency placement
+REM Step 2: Fix electron dependency placement and ensure clean install
 echo Fixing electron dependency placement...
 call npm uninstall electron >nul 2>&1
-call npm install --save-dev electron electron-builder
+call npm uninstall electron-builder >nul 2>&1
+call npm install --save-dev electron@^37.3.0 electron-builder@^26.0.12
+echo Verifying electron installation...
+call npx electron --version
 
 REM Step 3: Build frontend
 echo Building frontend...

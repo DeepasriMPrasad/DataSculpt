@@ -17,10 +17,13 @@ find node_modules -name "@esbuild" -type d -exec find {} -name "*netbsd*" -type 
 find node_modules -name "@esbuild" -type d -exec find {} -name "*openbsd*" -type d -exec rm -rf {} + 2>/dev/null || true
 find node_modules -name "@esbuild" -type d -exec find {} -name "*sunos*" -type d -exec rm -rf {} + 2>/dev/null || true
 
-# Step 2: Fix electron dependency placement
+# Step 2: Fix electron dependency placement and ensure clean install
 echo "Fixing electron dependency placement..."
 npm uninstall electron 2>/dev/null || true
-npm install --save-dev electron electron-builder
+npm uninstall electron-builder 2>/dev/null || true
+npm install --save-dev electron@^37.3.0 electron-builder@^26.0.12
+echo "Verifying electron installation..."
+npx electron --version || echo "Warning: Electron verification failed"
 
 # Step 3: Build frontend
 echo "Building frontend..."
