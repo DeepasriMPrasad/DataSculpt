@@ -270,8 +270,8 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                         json_scripts = soup.find_all('script', type='application/ld+json')
                         for script in json_scripts:
                             try:
-                                import json
-                                data = json.loads(script.string or '{}')
+                                import json as json_module
+                                data = json_module.loads(script.string or '{}')
                                 if isinstance(data, dict):
                                     if 'headline' in data:
                                         title_text = data['headline']
@@ -358,6 +358,7 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                     base_name = crawl_request.url.replace("https://", "").replace("http://", "").replace("/", "_").replace(".", "_")[:50]
                     
                     # Save JSON
+                    import json as json_module
                     json_data = {
                         "title": title_text,
                         "content": text_content,
@@ -370,7 +371,7 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                     
                     json_file = output_dir / f"{base_name}_{timestamp}.json"
                     with open(json_file, 'w', encoding='utf-8') as f:
-                        json.dump(json_data, f, indent=2, ensure_ascii=False)
+                        json_module.dump(json_data, f, indent=2, ensure_ascii=False)
                     
                     # Save markdown
                     md_file = output_dir / f"{base_name}_{timestamp}.md"
