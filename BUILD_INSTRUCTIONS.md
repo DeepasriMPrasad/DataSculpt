@@ -1,39 +1,73 @@
 # Windows Executable Build Instructions
 
-## Problem Solved ✅
+## For Local Windows Machine ✅
 
-The error `npm error Missing script: "build:win"` has been resolved. The issue was that this project uses **Replit workflows** instead of traditional npm scripts.
+Since you're building on your local Windows machine, here are the exact steps:
 
-## Solution: Use Windows Build Workflow
+### Quick Build (Copy & Paste)
 
-### Step 1: Start the Windows Build Workflow
-The project now includes a pre-configured workflow that automatically:
-- Builds the React frontend using Vite
-- Packages the application using electron-builder
-- Creates Windows x64 executable
-
-### Step 2: Monitor Build Progress
-Watch the workflow console to see:
-- Frontend compilation with Vite
-- Electron packaging process
-- File generation in `dist/` folder
-
-### Step 3: Locate Your Executable
-After successful build, you'll find:
-- **Installer**: `dist/CrawlOps Studio Setup 1.0.0.exe`
-- **Portable**: `dist/win-unpacked/CrawlOps Studio.exe`
-
-## Alternative: Manual Build Commands
-
-If you prefer running commands manually on Windows:
+**Open Command Prompt or Git Bash in your project folder and run:**
 
 ```bash
+# Install dependencies
+npm install
+
+# Install electron-builder
+npm install --save-dev electron-builder
+
 # Build frontend
 npx vite build
 
-# Package for Windows
+# Create Windows executable
 npx electron-builder --win --x64 --config electron-builder.config.js
 ```
+
+### Alternative: Use Build Script
+
+I've created a build script for you. Run this in your project folder:
+
+**For Command Prompt:**
+```cmd
+scripts\build-windows.bat
+```
+
+**For Git Bash/WSL:**
+```bash
+bash scripts/build-windows.sh
+```
+
+## What You'll Get
+
+After running the build commands, you'll find in the `dist/` folder:
+- **Installer**: `CrawlOps Studio Setup 1.0.0.exe`
+- **Portable**: `win-unpacked/CrawlOps Studio.exe`
+
+## Why No npm Scripts?
+
+This project was designed for Replit workflows, not traditional npm scripts. The build scripts I provided above replace the missing `npm run build:win` command.
+
+## Troubleshooting
+
+**"electron-builder not found"**
+```bash
+npm install --save-dev electron-builder
+```
+
+**"vite not found"** 
+```bash
+npm install
+```
+
+**Build fails with dependency errors**
+```bash
+# Clean install
+rm -rf node_modules package-lock.json
+npm install
+```
+
+**"Package electron is only allowed in devDependencies"**
+- This is already fixed in the project configuration
+- The build commands above handle this automatically
 
 ## Key Files Created
 

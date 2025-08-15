@@ -8,6 +8,24 @@ CrawlOps Studio is an enterprise-grade desktop application for professional web 
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes (August 15, 2025)
+
+### Windows Executable Build Setup ✅
+- **Issue**: User getting "Missing script: build:win" error on local Windows machine
+- **Root Cause**: Project uses Replit workflows instead of traditional npm scripts
+- **Solution**: Created manual build commands and build scripts for local Windows development
+- **Files Added**: 
+  - `scripts/build-windows.bat` (Windows Command Prompt)
+  - `scripts/build-windows.sh` (Git Bash/WSL)
+  - `BUILD_INSTRUCTIONS.md` (Complete local build guide)
+- **Status**: User can now build Windows executable locally using provided commands
+
+### Windows Compatibility Fixes ✅
+- **Issue**: aiodns SelectorEventLoop error on Windows local filesystem
+- **Solution**: Added automatic Windows event loop policy detection in unified_server.py
+- **Files Modified**: `unified_server.py`, `WINDOWS_COMPATIBILITY.md`
+- **Status**: Windows compatibility issues resolved
+
 ## System Architecture
 
 ### Frontend Architecture
