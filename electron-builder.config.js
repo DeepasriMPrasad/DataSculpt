@@ -43,7 +43,6 @@ module.exports = {
     ],
     "icon": "icon.ico",
     "requestedExecutionLevel": "asInvoker",
-    "publisherName": "CrawlOps Studio",
     "verifyUpdateCodeSignature": false
   },
   "mac": {
