@@ -300,7 +300,15 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                         # If we found enhanced content, use it
                         if enhanced_content:
                             enhanced_text = ' '.join(enhanced_content)
-                            scraping_logger.info(f"Enhanced extraction successful: {len(enhanced_text)} characters from protected content")
+                            # Filter out generic JavaScript disabled messages
+                            if not any(generic in enhanced_text.lower() for generic in [
+                                'javascript is disabled', 'javascript must be enabled',
+                                'enable javascript', 'javascript is required'
+                            ]) or len(enhanced_text) > 200:
+                                scraping_logger.info(f"Enhanced extraction successful: {len(enhanced_text)} characters from protected content")
+                            else:
+                                enhanced_text = None
+                                scraping_logger.warning(f"Only generic JavaScript warning found, enhanced extraction insufficient")
                         else:
                             enhanced_text = None
                             scraping_logger.warning(f"No enhanced content found for protected site {crawl_request.url}")
@@ -329,6 +337,56 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                     if enhanced_text and len(enhanced_text) > len(text_content):
                         text_content = enhanced_text
                         scraping_logger.info(f"Using enhanced content extraction for better results")
+                    elif enhanced_text and any(indicator in html_content.lower() for indicator in [
+                        'javascript is disabled', 'javascript must be enabled'
+                    ]):
+                        # For JavaScript-protected sites, try additional extraction methods
+                        scraping_logger.info(f"Attempting deeper content extraction for JavaScript-protected site")
+                        
+                        # Look for any text content in specific containers
+                        content_selectors = [
+                            'div[role="main"]', 'main', '[data-content]', '.content', 
+                            '#content', '.documentation', '.doc-content', '.article-content',
+                            'section', 'article', '.main-content', '.page-content'
+                        ]
+                        
+                        additional_content = []
+                        for selector in content_selectors:
+                            try:
+                                elements = soup.select(selector)
+                                for element in elements:
+                                    elem_text = element.get_text(strip=True)
+                                    if elem_text and len(elem_text) > 50 and 'javascript' not in elem_text.lower():
+                                        additional_content.append(elem_text)
+                                        scraping_logger.debug(f"Found content in {selector}: {elem_text[:50]}...")
+                            except:
+                                pass
+                        
+                        if additional_content:
+                            combined_content = ' '.join(additional_content)
+                            if len(combined_content) > len(text_content):
+                                text_content = combined_content
+                                scraping_logger.info(f"Used deeper extraction method, found {len(combined_content)} characters")
+                        else:
+                            # Last resort: try to get any meaningful content from the page
+                            all_text = soup.get_text(separator=' ', strip=True)
+                            paragraphs = soup.find_all(['p', 'div', 'span'])
+                            meaningful_content = []
+                            
+                            for para in paragraphs:
+                                para_text = para.get_text(strip=True)
+                                if (para_text and len(para_text) > 20 and 
+                                    'javascript' not in para_text.lower() and 
+                                    para_text not in meaningful_content):
+                                    meaningful_content.append(para_text)
+                                    
+                            if meaningful_content:
+                                last_resort_content = ' '.join(meaningful_content)
+                                if len(last_resort_content) > len(text_content):
+                                    text_content = last_resort_content
+                                    scraping_logger.info(f"Used last-resort extraction, found {len(last_resort_content)} characters")
+                            else:
+                                scraping_logger.warning(f"Site {crawl_request.url} requires full JavaScript execution - content may be limited to static elements only")
                     
                     # Extract links and images
                     links = [a.get('href') for a in soup.find_all('a', href=True) if a.get('href').startswith(('http', '/'))][:10]

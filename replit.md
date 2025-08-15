@@ -67,6 +67,17 @@ Preferred communication style: Simple, everyday language.
 - **Logging**: Detailed protection detection and enhanced content extraction logging
 - **Status**: JavaScript protection handling operational with intelligent content extraction
 
+### JavaScript-Heavy Site Limitations ⚠️
+- **Reality**: Some sites (like AWS documentation) require full JavaScript execution to load content
+- **Current Capability**: Enhanced HTTP extraction with multiple fallback methods
+- **Behavior**: 
+  - Detects JavaScript protection automatically
+  - Extracts available static content (noscript, meta tags, structured data)
+  - Attempts deeper content extraction from HTML containers
+  - Provides meaningful feedback when content is JavaScript-dependent
+- **Alternative**: For full JavaScript rendering, users would need browser automation tools like Playwright locally
+- **Status**: Working as designed - extracts maximum possible content from static HTML sources
+
 ## External Dependencies
 
 ### Core Runtime Dependencies
