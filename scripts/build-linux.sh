@@ -12,10 +12,16 @@ fi
 echo "Installing dependencies..."
 npm install
 
+<<<<<<< HEAD
 # Fix electron dependency location and install electron-builder
 echo "Fixing electron dependency and installing electron-builder..."
 npm uninstall electron
 npm install --save-dev electron electron-builder
+=======
+# Install electron-builder as dev dependency
+echo "Installing electron-builder..."
+npm install --save-dev electron-builder
+>>>>>>> 4538536 (Enable building the application for macOS and Linux operating systems)
 
 # Build the frontend
 echo "Building frontend with Vite..."
