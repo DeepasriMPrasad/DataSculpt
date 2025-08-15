@@ -32,6 +32,18 @@ Preferred communication style: Simple, everyday language.
   - SingleFile HTML with actual page content and CSS inlining
 - **Status**: Fully operational - real content extraction working perfectly
 
+### Ignore robots.txt Feature Added ✅
+- **Feature**: Complete ignore robots.txt functionality for enterprise crawling
+- **Implementation**:
+  - Frontend checkbox in Settings > Output & Storage section
+  - Backend parameter validation and logging
+  - User-controlled override of website crawling restrictions
+  - Settings state persistence with ignore_robots boolean
+- **UI Location**: Settings tab > "Output & Storage" section > "Ignore robots.txt" checkbox
+- **API Parameter**: `ignore_robots: boolean` in CrawlRequest model
+- **Logging**: Server logs whether robots.txt restrictions are being respected or ignored
+- **Status**: Fully implemented and operational
+
 ### Session Management System ✅
 - **Feature**: Comprehensive session token and cookie storage system
 - **Components**: 

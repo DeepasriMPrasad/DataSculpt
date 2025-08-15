@@ -149,7 +149,8 @@
                 depth: 2,
                 maxPages: 100,
                 formats: { json: true, md: true, html: false, pdf: false },
-                profile: 'standard'
+                profile: 'standard',
+                ignoreRobots: false
             });
 
             const tabs = [
@@ -180,6 +181,9 @@
                     console.log('Starting extraction...');
                     const response = await apiClient.post('/extract', {
                         url: settings.startUrl,
+                        max_depth: settings.depth,
+                        max_pages: settings.maxPages,
+                        ignore_robots: settings.ignoreRobots,
                         timeout: 30
                     });
                     console.log('Crawl completed successfully:', response);
@@ -838,7 +842,7 @@
                                 }, 'Info')
                             )
                         ),
-                        React.createElement('div', { className: 'grid grid-cols-2 gap-4' },
+                        React.createElement('div', { className: 'grid grid-cols-2 gap-4 mb-4' },
                             React.createElement('div', {},
                                 React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'User Agent'),
                                 React.createElement('input', {
@@ -856,6 +860,25 @@
                                     max: 300,
                                     className: 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
                                 })
+                            )
+                        ),
+                        
+                        React.createElement('div', { className: 'flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600' },
+                            React.createElement('div', { className: 'flex items-center' },
+                                React.createElement('input', {
+                                    type: 'checkbox',
+                                    id: 'ignoreRobots',
+                                    checked: settings.ignoreRobots || false,
+                                    onChange: (e) => setSettings({ ...settings, ignoreRobots: e.target.checked }),
+                                    className: 'w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600'
+                                }),
+                                React.createElement('label', { 
+                                    htmlFor: 'ignoreRobots',
+                                    className: 'ml-3 text-sm font-medium text-gray-700 dark:text-gray-300'
+                                }, 'Ignore robots.txt')
+                            ),
+                            React.createElement('div', { className: 'text-xs text-gray-500 dark:text-gray-400' }, 
+                                'Override website crawling restrictions'
                             )
                         )
                     )

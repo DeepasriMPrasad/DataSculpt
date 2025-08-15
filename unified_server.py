@@ -69,6 +69,7 @@ class CrawlRequest(BaseModel):
     max_depth: int = 2
     max_pages: int = 100
     export_formats: List[str] = ["json", "md", "html", "pdf"]
+    ignore_robots: bool = False
 
 class CrawlStatus(BaseModel):
     status: str
@@ -217,6 +218,12 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                     markdown_content = f"# {title_text}\n\n{text_content}"
                     if links:
                         markdown_content += f"\n\n## Links\n" + "\n".join([f"- {link}" for link in links])
+                    
+                    # Log robots.txt preference
+                    if crawl_request.ignore_robots:
+                        logger.info(f"Ignoring robots.txt restrictions for {crawl_request.url}")
+                    else:
+                        logger.info(f"Respecting robots.txt restrictions for {crawl_request.url}")
                     
                     # Save to output folder
                     output_dir = Path("./crawl_output")
