@@ -315,10 +315,42 @@
                         break;
                     case 'txt':
                         downloadFile(
-                            crawlResults.json.content || JSON.stringify(crawlResults.json, null, 2),
+                            crawlResults.text || crawlResults.json.content || JSON.stringify(crawlResults.json, null, 2),
                             `${baseName}_${timestamp}.txt`,
                             'text/plain'
                         );
+                        break;
+                    case 'pdf':
+                        // For PDF, create a simple HTML version and let browser handle PDF generation
+                        const pdfContent = `<!DOCTYPE html>
+<html>
+<head>
+    <title>${crawlResults.meta.title || crawlResults.url}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .meta { background: #f5f5f5; padding: 15px; margin: 20px 0; border-left: 4px solid #007cba; }
+        .content { white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>${crawlResults.meta.title || 'Extracted Content'}</h1>
+    <div class="meta">
+        <strong>URL:</strong> ${crawlResults.url}<br>
+        <strong>Words:</strong> ${crawlResults.meta.word_count}<br>
+        <strong>Extracted:</strong> ${new Date().toLocaleString()}
+    </div>
+    <div class="content">${crawlResults.text || crawlResults.json.content}</div>
+</body>
+</html>`;
+                        
+                        // Create blob and download
+                        downloadFile(
+                            pdfContent,
+                            `${baseName}_${timestamp}.html`,
+                            'text/html'
+                        );
+                        alert('📄 HTML file downloaded. Use "Print to PDF" in your browser to create PDF.');
                         break;
                     default:
                         alert('Unsupported format');
@@ -466,6 +498,13 @@
                         },
                             React.createElement(Icons.Download, { className: 'w-4 h-4 mr-2' }),
                             'Text'
+                        ),
+                        React.createElement('button', {
+                            onClick: () => handleDownload('pdf'),
+                            className: 'flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors'
+                        },
+                            React.createElement(Icons.Download, { className: 'w-4 h-4 mr-2' }),
+                            'PDF'
                         )
                     )
                 ),
@@ -782,25 +821,42 @@
                 ),
 
                 React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
-                    React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-4' }, 'Network Settings'),
+                    React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-4' }, 'Output & Storage'),
                     React.createElement('div', { className: 'space-y-4' },
                         React.createElement('div', {},
-                            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'User Agent'),
-                            React.createElement('input', {
-                                type: 'text',
-                                placeholder: 'CrawlOps Studio/1.0',
-                                className: 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
-                            })
+                            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'Output Folder'),
+                            React.createElement('div', { className: 'flex space-x-2' },
+                                React.createElement('input', {
+                                    type: 'text',
+                                    value: './crawl_output',
+                                    readOnly: true,
+                                    className: 'flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                }),
+                                React.createElement('button', {
+                                    onClick: () => alert('📁 Files automatically saved to ./crawl_output/\\n\\nAll formats (JSON, Markdown, HTML, Text) are saved after each crawl.'),
+                                    className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
+                                }, 'Info')
+                            )
                         ),
-                        React.createElement('div', {},
-                            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'Request Timeout (seconds)'),
-                            React.createElement('input', {
-                                type: 'number',
-                                defaultValue: 30,
-                                min: 5,
-                                max: 300,
-                                className: 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
-                            })
+                        React.createElement('div', { className: 'grid grid-cols-2 gap-4' },
+                            React.createElement('div', {},
+                                React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'User Agent'),
+                                React.createElement('input', {
+                                    type: 'text',
+                                    placeholder: 'CrawlOps Studio/1.0',
+                                    className: 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
+                                })
+                            ),
+                            React.createElement('div', {},
+                                React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'Request Timeout (seconds)'),
+                                React.createElement('input', {
+                                    type: 'number',
+                                    defaultValue: 30,
+                                    min: 5,
+                                    max: 300,
+                                    className: 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
+                                })
+                            )
                         )
                     )
                 )

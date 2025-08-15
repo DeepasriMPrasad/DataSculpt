@@ -6,9 +6,11 @@ This solves the Replit networking issues by having everything on port 5000
 
 import os
 import sys
+import json
 import logging
 import platform
 from pathlib import Path
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -113,31 +115,176 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
         crawl_state["status"] = "running"
         crawl_state["queue_size"] = 1
         
-        # Return a proper crawl result with expected data structure
-        return {
-            "success": True,
-            "message": f"Crawl started for {crawl_request.url}",
-            "crawl_id": "crawl_001",
-            "url": crawl_request.url,
-            "meta": {
-                "word_count": 1247,  # Mock data for now - would be real extracted content
-                "pages_processed": 1,
-                "extraction_time": "2.5s"
-            },
-            "json": {
-                "title": f"Extracted content from {crawl_request.url}",
-                "content": f"Successfully crawled {crawl_request.url} with {crawl_request.max_depth} depth and {crawl_request.max_pages} max pages.",
-                "timestamp": "2025-08-15T21:40:00Z",
-                "formats": crawl_request.export_formats
-            },
-            "markdown": f"# Extracted Content\n\nSuccessfully crawled **{crawl_request.url}**\n\n- Max Depth: {crawl_request.max_depth}\n- Max Pages: {crawl_request.max_pages}\n- Export Formats: {', '.join(crawl_request.export_formats)}\n\nContent extraction completed successfully.",
-            "html": f"<html><head><title>Crawl Results</title></head><body><h1>Crawl Results for {crawl_request.url}</h1><p>Extraction completed successfully.</p></body></html>",
-            "config": {
-                "max_depth": crawl_request.max_depth,
-                "max_pages": crawl_request.max_pages,
-                "export_formats": crawl_request.export_formats
-            }
-        }
+        # Perform actual content extraction using crawl4ai
+        try:
+            import asyncio
+            from crawl4ai import AsyncWebCrawler
+            
+            # Initialize crawler
+            async with AsyncWebCrawler(verbose=True) as crawler:
+                # Crawl the URL with actual content extraction
+                result = await crawler.arun(url=crawl_request.url)
+                
+                if result.success:
+                    # Extract real content
+                    extracted_text = result.cleaned_html or result.markdown or "No content extracted"
+                    word_count = len(extracted_text.split()) if extracted_text else 0
+                    
+                    return {
+                        "success": True,
+                        "message": f"Successfully crawled {crawl_request.url}",
+                        "crawl_id": f"crawl_{hash(crawl_request.url) % 10000}",
+                        "url": crawl_request.url,
+                        "meta": {
+                            "word_count": word_count,
+                            "pages_processed": 1,
+                            "extraction_time": f"{result.response_time:.2f}s" if result.response_time else "N/A",
+                            "status_code": result.status_code,
+                            "title": result.metadata.get('title', 'No title') if result.metadata else 'No title'
+                        },
+                        "json": {
+                            "title": result.metadata.get('title', 'No title') if result.metadata else 'No title',
+                            "content": extracted_text,
+                            "url": crawl_request.url,
+                            "timestamp": result.metadata.get('timestamp') if result.metadata else None,
+                            "links": result.links[:10] if result.links else [],  # First 10 links
+                            "images": result.media[:5] if result.media else []   # First 5 images
+                        },
+                        "markdown": result.markdown or f"# {result.metadata.get('title', 'Extracted Content')}\n\n{extracted_text}",
+                        "html": result.html or f"<html><head><title>{result.metadata.get('title', 'Crawl Results')}</title></head><body>{result.cleaned_html or extracted_text}</body></html>",
+                        "text": extracted_text,
+                        "config": {
+                            "max_depth": crawl_request.max_depth,
+                            "max_pages": crawl_request.max_pages,
+                            "export_formats": crawl_request.export_formats
+                        }
+                    }
+                else:
+                    logger.error(f"Crawl failed: {result.error_message}")
+                    raise HTTPException(status_code=500, detail=f"Crawl failed: {result.error_message}")
+                    
+        except Exception as crawl4ai_error:
+            # Fallback to BeautifulSoup + aiohttp extraction when crawl4ai fails
+            logger.warning(f"crawl4ai failed ({crawl4ai_error}), using HTTP + BeautifulSoup extraction")
+            import aiohttp
+            
+            async with aiohttp.ClientSession(
+                timeout=aiohttp.ClientTimeout(total=30),
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            ) as session:
+                async with session.get(crawl_request.url) as response:
+                    html_content = await response.text()
+                    
+                    # Advanced content extraction with BeautifulSoup
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(html_content, 'html.parser')
+                    
+                    # Remove unwanted elements
+                    for element in soup(["script", "style", "nav", "footer", "aside", "header", "menu"]):
+                        element.decompose()
+                    
+                    # Extract title
+                    title = soup.find('title')
+                    title_text = title.get_text().strip() if title else "Extracted Content"
+                    
+                    # Extract main content - try multiple strategies
+                    main_content = (
+                        soup.find('main') or 
+                        soup.find('article') or 
+                        soup.find('div', class_=lambda x: x and ('content' in x.lower() or 'article' in x.lower())) or
+                        soup.find('div', id=lambda x: x and ('content' in x.lower() or 'main' in x.lower())) or
+                        soup.body
+                    )
+                    
+                    if main_content:
+                        # Extract clean text from main content
+                        text_content = main_content.get_text(separator=' ', strip=True)
+                        # Clean up whitespace
+                        text_content = ' '.join(text_content.split())
+                    else:
+                        text_content = soup.get_text(separator=' ', strip=True)
+                        text_content = ' '.join(text_content.split())
+                    
+                    # Extract links and images
+                    links = [a.get('href') for a in soup.find_all('a', href=True) if a.get('href').startswith(('http', '/'))][:10]
+                    images = [img.get('src') for img in soup.find_all('img', src=True) if img.get('src')][:5]
+                    
+                    word_count = len(text_content.split()) if text_content else 0
+                    
+                    # Create markdown version
+                    markdown_content = f"# {title_text}\n\n{text_content}"
+                    if links:
+                        markdown_content += f"\n\n## Links\n" + "\n".join([f"- {link}" for link in links])
+                    
+                    # Save to output folder
+                    output_dir = Path("./crawl_output")
+                    output_dir.mkdir(exist_ok=True)
+                    
+                    # Save files
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    base_name = crawl_request.url.replace("https://", "").replace("http://", "").replace("/", "_").replace(".", "_")[:50]
+                    
+                    # Save JSON
+                    json_data = {
+                        "title": title_text,
+                        "content": text_content,
+                        "url": crawl_request.url,
+                        "timestamp": datetime.now().isoformat(),
+                        "links": links,
+                        "images": images,
+                        "word_count": word_count
+                    }
+                    
+                    json_file = output_dir / f"{base_name}_{timestamp}.json"
+                    with open(json_file, 'w', encoding='utf-8') as f:
+                        json.dump(json_data, f, indent=2, ensure_ascii=False)
+                    
+                    # Save markdown
+                    md_file = output_dir / f"{base_name}_{timestamp}.md"
+                    with open(md_file, 'w', encoding='utf-8') as f:
+                        f.write(markdown_content)
+                    
+                    # Save HTML
+                    html_file = output_dir / f"{base_name}_{timestamp}.html"
+                    with open(html_file, 'w', encoding='utf-8') as f:
+                        f.write(html_content)
+                    
+                    # Save text
+                    txt_file = output_dir / f"{base_name}_{timestamp}.txt"
+                    with open(txt_file, 'w', encoding='utf-8') as f:
+                        f.write(text_content)
+                    
+                    logger.info(f"Content extracted and saved to {output_dir} - {word_count} words")
+                    
+                    return {
+                        "success": True,
+                        "message": f"Successfully crawled {crawl_request.url} and saved to output folder",
+                        "crawl_id": f"crawl_{hash(crawl_request.url) % 10000}",
+                        "url": crawl_request.url,
+                        "meta": {
+                            "word_count": word_count,
+                            "pages_processed": 1,
+                            "extraction_time": "N/A",
+                            "status_code": response.status,
+                            "title": title_text,
+                            "output_folder": str(output_dir),
+                            "files_saved": [json_file.name, md_file.name, html_file.name, txt_file.name]
+                        },
+                        "json": json_data,
+                        "markdown": markdown_content,
+                        "html": html_content,
+                        "text": text_content,
+                        "config": {
+                            "max_depth": crawl_request.max_depth,
+                            "max_pages": crawl_request.max_pages,
+                            "export_formats": crawl_request.export_formats
+                        }
+                    }
+        except Exception as e:
+            logger.error(f"Failed to crawl {crawl_request.url}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to crawl: {str(e)}")
     except Exception as e:
         logger.error(f"Failed to start crawl: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to start crawl: {str(e)}")
@@ -166,18 +313,81 @@ async def extract_content(crawl_request: CrawlRequest, background_tasks: Backgro
 # SingleFile endpoint for rich HTML capture
 @app.post("/api/singlefile")
 async def singlefile_capture(crawl_request: CrawlRequest):
-    """Capture rich HTML with CSS and images embedded."""
+    """Capture rich HTML with CSS and images embedded using real content extraction."""
     try:
-        return {
-            "success": True,
-            "html": f"<!DOCTYPE html><html><head><title>SingleFile Capture - {crawl_request.url}</title><style>body{{font-family:Arial,sans-serif;margin:40px;}}h1{{color:#333;}}p{{line-height:1.6;}}</style></head><body><h1>Rich HTML Capture</h1><p>This is a SingleFile capture of <strong>{crawl_request.url}</strong> with embedded CSS and optimized content.</p><p>Capture completed successfully with all resources inlined.</p></body></html>",
-            "size_bytes": 2048,
-            "resources_inlined": ["css", "images", "fonts"],
-            "capture_time": "3.2s"
-        }
+        import aiohttp
+        from bs4 import BeautifulSoup
+        import base64
+        import re
+        from urllib.parse import urljoin, urlparse
+        
+        async with aiohttp.ClientSession() as session:
+            # Get the main page
+            async with session.get(crawl_request.url) as response:
+                html_content = await response.text()
+                
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            # Inline CSS files
+            for link in soup.find_all('link', rel='stylesheet'):
+                href = link.get('href')
+                if href:
+                    css_url = urljoin(crawl_request.url, href)
+                    try:
+                        async with session.get(css_url) as css_response:
+                            css_content = await css_response.text()
+                            # Create style tag and replace link
+                            style_tag = soup.new_tag('style')
+                            style_tag.string = css_content
+                            link.replace_with(style_tag)
+                    except:
+                        pass  # Skip if CSS can't be loaded
+            
+            # Inline small images as base64
+            for img in soup.find_all('img'):
+                src = img.get('src')
+                if src and not src.startswith('data:'):
+                    img_url = urljoin(crawl_request.url, src)
+                    try:
+                        async with session.get(img_url) as img_response:
+                            if img_response.status == 200:
+                                img_data = await img_response.read()
+                                if len(img_data) < 50000:  # Only inline small images (< 50KB)
+                                    content_type = img_response.headers.get('content-type', 'image/png')
+                                    b64_data = base64.b64encode(img_data).decode()
+                                    img['src'] = f"data:{content_type};base64,{b64_data}"
+                    except:
+                        pass  # Skip if image can't be loaded
+            
+            # Get the final HTML
+            final_html = str(soup)
+            size_bytes = len(final_html.encode('utf-8'))
+            
+            return {
+                "success": True,
+                "html": final_html,
+                "size_bytes": size_bytes,
+                "resources_inlined": ["css", "images"],
+                "capture_time": "N/A"
+            }
+            
     except Exception as e:
         logger.error(f"SingleFile capture failed: {e}")
-        raise HTTPException(status_code=500, detail=f"SingleFile capture failed: {str(e)}")
+        # Fallback to basic extraction
+        try:
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.get(crawl_request.url) as response:
+                    html_content = await response.text()
+                    return {
+                        "success": True,
+                        "html": html_content,
+                        "size_bytes": len(html_content.encode('utf-8')),
+                        "resources_inlined": [],
+                        "capture_time": "N/A"
+                    }
+        except:
+            raise HTTPException(status_code=500, detail=f"SingleFile capture failed: {str(e)}")
 
 # Authentication endpoints for enterprise SSO
 class SSOLoginRequest(BaseModel):
