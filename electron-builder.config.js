@@ -13,6 +13,7 @@ module.exports = {
     "session_api.py",
     "unified_server.py",
     "node_modules/**/*",
+    "!node_modules/@esbuild/aix-ppc64",
     "!node_modules/@esbuild/aix-ppc64/**",
     "!node_modules/@esbuild/android-*/**", 
     "!node_modules/@esbuild/darwin-*/**",

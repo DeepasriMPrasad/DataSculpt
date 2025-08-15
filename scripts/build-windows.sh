@@ -17,17 +17,34 @@ find node_modules -name "@esbuild" -type d -exec find {} -name "*netbsd*" -type 
 find node_modules -name "@esbuild" -type d -exec find {} -name "*openbsd*" -type d -exec rm -rf {} + 2>/dev/null || true
 find node_modules -name "@esbuild" -type d -exec find {} -name "*sunos*" -type d -exec rm -rf {} + 2>/dev/null || true
 
-# Step 2: Fix electron dependency placement and ensure clean install
+
+
+# Step 2: Fix electron dependency placement
 echo "Fixing electron dependency placement..."
 npm uninstall electron 2>/dev/null || true
-npm uninstall electron-builder 2>/dev/null || true
-npm install --save-dev electron@^37.3.0 electron-builder@^26.0.12
-echo "Verifying electron installation..."
-npx electron --version || echo "Warning: Electron verification failed"
+npm install --save-dev electron electron-builder
 
 # Step 3: Build frontend
 echo "Building frontend..."
 npx vite build
+
+# Ensure problematic esbuild directories exist right before packaging
+mkdir -p node_modules/@esbuild/aix-ppc64
+mkdir -p node_modules/@esbuild/android-arm64
+mkdir -p node_modules/@esbuild/darwin-arm64
+mkdir -p node_modules/@esbuild/freebsd-x64
+mkdir -p node_modules/@esbuild/linux-x64
+mkdir -p node_modules/@esbuild/netbsd-x64
+mkdir -p node_modules/@esbuild/openbsd-x64
+mkdir -p node_modules/@esbuild/sunos-x64
+mkdir -p node_modules/@esbuild/windows-arm64
+mkdir -p node_modules/@esbuild/windows-ia32
+mkdir -p node_modules/@esbuild/windows-arm
+mkdir -p node_modules/@esbuild/windows-ppc64
+mkdir -p node_modules/@esbuild/windows-ppc64le
+mkdir -p node_modules/@esbuild/windows-s390x
+mkdir -p node_modules/@esbuild/windows-riscv64
+mkdir -p node_modules/@esbuild/windows-riscv64le
 
 # Step 4: Create Windows executable
 echo "Creating Windows executable..."
