@@ -1,47 +1,62 @@
 # CrawlOps Studio
 
-Desktop application for web crawling with SSO support, human-in-the-loop CAPTCHA handling, and multiple export formats.
+Enterprise-grade desktop application for professional web crawling with visible browser navigation, session management, and multi-format content export.
 
-![CrawlOps Studio](https://img.shields.io/badge/Version-1.0.0-blue.svg)
-![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
-![License](https://img.shields.io/badge/License-Enterprise-orange.svg)
+## Key Features
 
-## 🌟 Features
+- **Visual Crawling**: All navigation occurs in visible browser windows (no headless browsing)
+- **Session Management**: Persistent storage of authentication tokens and cookies per domain
+- **Multi-format Export**: JSON, Markdown, SingleFile HTML, and PDF outputs
+- **Enterprise Authentication**: SSO support for corporate systems (Okta, Azure AD, etc.)
+- **Human-in-the-Loop**: CAPTCHA and challenge resolution with manual intervention
+- **Execution Profiles**: Standard (fast), Safe (cautious), and Guided (manual approval) modes
+- **Corporate Network**: Custom CA bundles and proxy configuration support
 
-### Core Capabilities
-- **Visual Crawling**: All navigation in visible Electron BrowserWindow (no headless browsing)
-- **Multiple Export Formats**: JSON, Markdown, SingleFile HTML, and PDF
-- **SSO Authentication**: Interactive login support for enterprise systems (Okta, Azure AD, etc.)
-- **CAPTCHA Handling**: Human-in-the-loop resolution for challenges
-- **PDF Link Extraction**: Recursive crawling of links found within generated PDFs
+## Technology Stack
 
-### Execution Profiles
-- **Standard Mode**: Balanced speed and politeness (3 concurrent, 1-2s delay)
-- **Safe Mode**: Ultra-respectful crawling (1 concurrent, 8-15s delay, strict robots.txt)
-- **Guided Mode**: Manual review and approval for each page
+- **Frontend**: Electron, React 19, TypeScript, TailwindCSS
+- **Backend**: FastAPI with Python 3.11+
+- **Content Processing**: crawl4ai, SingleFile web capture
+- **Session Storage**: SQLite with automatic expiration handling
+- **Build System**: Vite, electron-builder for cross-platform packaging
 
-### Other Features
-- **Corporate Network Support**: Custom CA bundles and proxy configuration
-- **Local-Only Operation**: No telemetry or external dependencies
-- **Professional UI**: Dark/light themes with real-time queue management
-- **Comprehensive Reporting**: Structured logs and exportable run reports
+## Quick Start
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- **Node.js** 20 or higher
-- **Python** 3.11 or higher  
-- **Git** for development
-- **4GB RAM** minimum, 8GB recommended
-- **500MB** disk space for installation
-
-### Development Setup
-
+### Development
 ```bash
-# 1. Clone the repository
-git clone <repository-url>
-cd crawlops-studio
+# Start the application
+python3.11 unified_server.py
+```
 
-# 2. Start development environment
-./scripts/dev.sh
+### Building Executables
+
+**Windows:**
+```bash
+npm uninstall electron
+npm install --save-dev electron electron-builder
+npx vite build
+npx electron-builder --win --x64 --config electron-builder.config.js --publish=never
+```
+
+**macOS/Linux:** See [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md)
+
+## Architecture
+
+- **Unified Server**: Single FastAPI server serves both frontend and backend on port 5000
+- **IPC Communication**: Secure Electron context bridge for main-renderer communication
+- **Queue Management**: In-memory URL queue with status tracking and concurrent processing
+- **Session Persistence**: Local SQLite database stores authentication data with domain isolation
+- **Content Pipeline**: Parallel processing for multiple output formats
+
+## Security & Privacy
+
+- **Local Operation**: All processing occurs locally, no external telemetry
+- **Session Isolation**: Domain-based session storage with automatic expiration
+- **Visible Browsing**: No headless automation, all navigation is user-visible
+- **Corporate Ready**: Enterprise authentication and network configuration support
+
+## Platform Support
+
+- Windows 10/11 (x64)
+- macOS 10.15+ (Intel & Apple Silicon)
+- Linux (x64) - AppImage and DEB packages
