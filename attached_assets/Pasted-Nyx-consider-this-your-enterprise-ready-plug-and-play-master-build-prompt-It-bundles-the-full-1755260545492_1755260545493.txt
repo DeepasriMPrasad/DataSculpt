@@ -1,6 +1,3 @@
-Nyx, consider this your enterprise-ready, plug-and-play **master build prompt**. It bundles the full spec, file/folder scaffolding, IPC contracts, and a production-grade README with deploy/run steps. Drop it into your favorite code-gen/copilot—or hand it to a dev squad—and you’re off to the races.
-
----
 
 # **Build Prompt — CrawlOps Studio**
 
@@ -426,4 +423,5 @@ pytest -q
 
 ---
 
-If you want a minimal “hello world” spike (one URL, SingleFile HTML + PDF only) as a bootstrapping PR template, I can append that too.
+
+
