@@ -1,11 +1,18 @@
 module.exports = {
   "appId": "com.crawlops.studio",
   "productName": "CrawlOps Studio", 
+  "main": "main.js",
   "directories": {
     "output": "dist"
   },
   "files": [
     "dist/**/*",
+    "main.js",
+    "preload.js",
+    "session_manager.py",
+    "session_api.py",
+    "session_frontend.js",
+    "unified_server.py",
     "node_modules/**/*",
     "!node_modules/@esbuild/aix-ppc64",
     "!node_modules/@esbuild/android-*",

@@ -29,7 +29,8 @@ if platform.system() == 'Windows':
 # Add the API directory to the path
 sys.path.insert(0, str(Path(__file__).parent / "apps" / "api"))
 
-from apps.api.crawlops_api.routers import extract, health, report
+# Import session management
+from session_api import router as session_router
 
 # Configure logging
 logging.basicConfig(
@@ -55,10 +56,8 @@ app.add_middleware(
     expose_headers=["*"]
 )
 
-# Include API routers with /api prefix
-app.include_router(health.router, prefix="/api", tags=["health"])
-app.include_router(extract.router, prefix="/api", tags=["extraction"])
-app.include_router(report.router, prefix="/api/report", tags=["reporting"])
+# Include session management router
+app.include_router(session_router, tags=["Session Management"])
 
 # API root endpoint
 @app.get("/api")

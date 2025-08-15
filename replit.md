@@ -10,6 +10,26 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (August 15, 2025)
 
+### Session Management System ✅
+- **Feature**: Comprehensive session token and cookie storage system
+- **Components**: 
+  - `session_manager.py` - SQLite-based persistent storage with expiration tracking
+  - `session_api.py` - REST API endpoints for session management
+  - `session_frontend.js` - Frontend integration with UI components
+- **Capabilities**:
+  - Save/load sessions with cookies and tokens per domain
+  - Automatic session expiration handling
+  - Usage analytics and statistics tracking
+  - Clear expired or all sessions with confirmation
+  - Domain filtering and session notes
+- **API Endpoints**:
+  - `POST /api/sessions/save` - Save session data
+  - `GET /api/sessions/load/{domain}` - Load session for domain
+  - `GET /api/sessions/list` - List all sessions
+  - `DELETE /api/sessions/clear` - Clear sessions (expired/all)
+- **Storage**: Local SQLite database in `~/.crawlops/sessions.db`
+- **Status**: Integrated into unified server and main application
+
 ### Multi-Platform Executable Build Setup ✅
 - **Issue**: User getting "Missing script: build:win" error on local Windows machine
 - **Root Cause**: Project uses Replit workflows instead of traditional npm scripts
