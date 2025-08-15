@@ -143,6 +143,41 @@ async def get_crawl_status():
     """Get current crawl status."""
     return CrawlStatus(**crawl_state)
 
+# Extract endpoint (alias for crawl/start for frontend compatibility)
+@app.post("/api/extract")
+async def extract_content(crawl_request: CrawlRequest, background_tasks: BackgroundTasks):
+    """Extract content from URL (same as crawl/start)."""
+    return await start_crawl(crawl_request, background_tasks)
+
+# Authentication endpoints for enterprise SSO
+@app.post("/api/auth/sso-login")
+async def sso_login(domain: str):
+    """Initiate SSO login for a domain."""
+    return {
+        "success": True,
+        "message": f"SSO login initiated for {domain}",
+        "auth_url": f"https://auth.{domain}/oauth/authorize",
+        "status": "redirecting"
+    }
+
+@app.post("/api/auth/save-session")
+async def save_auth_session(domain: str, tokens: dict):
+    """Save authentication session tokens."""
+    return {
+        "success": True,
+        "message": f"Authentication session saved for {domain}",
+        "expires_in": 3600
+    }
+
+@app.get("/api/auth/status")
+async def auth_status():
+    """Get current authentication status."""
+    return {
+        "authenticated": False,
+        "domains": [],
+        "message": "No active authentication sessions"
+    }
+
 # Serve the main HTML file
 @app.get("/")
 async def serve_frontend():

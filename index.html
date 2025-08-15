@@ -598,16 +598,153 @@
             );
         }
 
-        // Challenges Tab
+        // Challenges Tab with Authentication
         function ChallengesTab() {
+            const [authStatus, setAuthStatus] = useState({ authenticated: false, domains: [] });
+            const [newDomain, setNewDomain] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+
+            // Load auth status on mount
+            useEffect(() => {
+                loadAuthStatus();
+            }, []);
+
+            const loadAuthStatus = async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/auth/status`);
+                    const data = await response.json();
+                    setAuthStatus(data);
+                } catch (error) {
+                    console.error('Failed to load auth status:', error);
+                }
+            };
+
+            const handleSSO = async () => {
+                if (!newDomain.trim()) {
+                    alert('Please enter a domain name');
+                    return;
+                }
+                
+                setIsLoading(true);
+                try {
+                    const response = await fetch(`${API_BASE}/auth/sso-login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ domain: newDomain })
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        alert(`SSO login initiated for ${newDomain}. Please complete authentication in the browser window.`);
+                        setNewDomain('');
+                        setTimeout(() => loadAuthStatus(), 2000);
+                    }
+                } catch (error) {
+                    console.error('SSO login failed:', error);
+                    alert('Failed to initiate SSO login');
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
             return React.createElement('div', { className: 'space-y-6' },
+                // Authentication Section
                 React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
-                    React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-4' }, 'Challenge Center'),
-                    React.createElement('p', { className: 'text-gray-600 dark:text-gray-400 mb-4' },
-                        'Handle CAPTCHA challenges and authentication prompts during crawling.'
+                    React.createElement('div', { className: 'flex items-center mb-4' },
+                        React.createElement(Icons.Shield, { className: 'w-6 h-6 text-blue-600 mr-3' }),
+                        React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white' }, 'Enterprise Authentication')
                     ),
-                    React.createElement('div', { className: 'text-center py-8' },
-                        React.createElement('p', { className: 'text-gray-500 dark:text-gray-400' }, 'No active challenges. Challenges will appear here when encountered during crawling.')
+                    React.createElement('p', { className: 'text-gray-600 dark:text-gray-400 mb-6' }, 
+                        'Authenticate with enterprise SSO systems (Okta, Azure AD, Google Workspace) to access protected sites during crawling.'
+                    ),
+                    
+                    // SSO Login Form
+                    React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
+                        React.createElement('div', {},
+                            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'Domain for SSO Login'),
+                            React.createElement('div', { className: 'flex space-x-2' },
+                                React.createElement('input', {
+                                    type: 'text',
+                                    value: newDomain,
+                                    onChange: (e) => setNewDomain(e.target.value),
+                                    placeholder: 'company.com',
+                                    className: 'flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white',
+                                    disabled: isLoading
+                                }),
+                                React.createElement('button', {
+                                    onClick: handleSSO,
+                                    disabled: isLoading,
+                                    className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors'
+                                },
+                                    isLoading ? 'Connecting...' : 'SSO Login'
+                                )
+                            )
+                        ),
+                        
+                        // Auth Status
+                        React.createElement('div', {},
+                            React.createElement('label', { className: 'block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2' }, 'Authentication Status'),
+                            React.createElement('div', { 
+                                className: `p-3 rounded-lg ${authStatus.authenticated ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`
+                            },
+                                React.createElement('div', { className: 'flex items-center' },
+                                    React.createElement('div', { 
+                                        className: `w-2 h-2 rounded-full mr-2 ${authStatus.authenticated ? 'bg-green-500' : 'bg-gray-400'}`
+                                    }),
+                                    authStatus.authenticated ? `Authenticated (${authStatus.domains.length} domains)` : 'Not authenticated'
+                                )
+                            )
+                        )
+                    )
+                ),
+
+                // Active Challenges Section
+                React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
+                    React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-4' }, 'Active Challenges'),
+                    React.createElement('p', { className: 'text-gray-600 dark:text-gray-400 mb-4' }, 
+                        'CAPTCHAs and authentication prompts that require human interaction will appear here during crawling.'
+                    ),
+                    React.createElement('div', { className: 'text-center py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg' },
+                        React.createElement('div', { className: 'text-gray-400 mb-2' }, '🤖'),
+                        React.createElement('p', { className: 'text-gray-500 dark:text-gray-400' }, 'No active challenges'),
+                        React.createElement('p', { className: 'text-sm text-gray-400 dark:text-gray-500 mt-1' }, 
+                            'Start a crawl to see authentication prompts and CAPTCHAs here'
+                        )
+                    )
+                ),
+
+                // Session Management Integration
+                React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
+                    React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-4' }, 'Session Management'),
+                    React.createElement('p', { className: 'text-gray-600 dark:text-gray-400 mb-4' }, 
+                        'Saved authentication sessions will persist across crawl operations.'
+                    ),
+                    React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-3' },
+                        React.createElement('button', {
+                            onClick: () => {
+                                if (window.sessionManager) {
+                                    window.sessionManager.listSessions().then(sessions => {
+                                        alert(`Found ${sessions.length} saved sessions`);
+                                    });
+                                }
+                            },
+                            className: 'px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors'
+                        }, 'View Sessions'),
+                        React.createElement('button', {
+                            onClick: () => alert('Session save feature will activate automatically during authentication'),
+                            className: 'px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors'
+                        }, 'Auto-Save'),
+                        React.createElement('button', {
+                            onClick: () => {
+                                if (window.sessionManager && confirm('Clear all expired sessions?')) {
+                                    window.sessionManager.clearExpiredSessions().then(() => {
+                                        alert('Expired sessions cleared');
+                                        loadAuthStatus();
+                                    });
+                                }
+                            },
+                            className: 'px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors'
+                        }, 'Clear Expired')
                     )
                 )
             );
