@@ -85,16 +85,42 @@
 
         const apiClient = {
             async get(endpoint) {
-                const response = await fetch(`${API_BASE}${endpoint}`);
-                return response.json();
+                try {
+                    const response = await fetch(`${API_BASE}${endpoint}`, {
+                        mode: 'cors',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('API GET error:', error);
+                    throw error;
+                }
             },
             async post(endpoint, data) {
-                const response = await fetch(`${API_BASE}${endpoint}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                return response.json();
+                try {
+                    const response = await fetch(`${API_BASE}${endpoint}`, {
+                        method: 'POST',
+                        mode: 'cors',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('API POST error:', error);
+                    throw error;
+                }
             }
         };
 
@@ -124,23 +150,36 @@
                     return;
                 }
                 
+                console.log('Starting crawl for:', settings.startUrl);
                 setCrawlStatus('running');
+                
                 try {
+                    // Test API connection first
+                    console.log('Testing API connection...');
+                    const healthResponse = await apiClient.get('/health');
+                    console.log('API Health:', healthResponse);
+                    
+                    // Start extraction
+                    console.log('Starting extraction...');
                     const response = await apiClient.post('/extract', {
                         url: settings.startUrl,
                         timeout: 30
                     });
-                    console.log('Crawl started:', response);
-                    // Add a mock queue item to show progress
+                    console.log('Crawl completed successfully:', response);
+                    
+                    // Add to queue to show progress
                     setQueue([{
                         url: settings.startUrl,
                         depth: 0,
                         status: 'done'
                     }]);
+                    
+                    setCrawlStatus('stopped');
+                    alert(`Crawl completed! Extracted ${response.meta.word_count} words from ${settings.startUrl}`);
                 } catch (error) {
                     console.error('Failed to start crawl:', error);
                     setCrawlStatus('stopped');
-                    alert('Failed to start crawl. Please check the URL and try again.');
+                    alert(`Failed to start crawl: ${error.message || 'Unknown error'}`);
                 }
             };
 
