@@ -3,21 +3,46 @@
 ## For Windows Local Development (Updated August 15, 2025)
 
 ### Prerequisites
-- Windows 10/11 (required for native builds)
+- Windows 10/11 (for native builds) OR Linux/macOS with Wine installed
 - Node.js 18+ installed
 - Git for Windows (if cloning from repository)
-- Administrator privileges recommended
+- Administrator privileges recommended (Windows) or sudo access (Linux/macOS)
+
+#### Wine Setup (for Linux/macOS)
+If building on Linux/macOS, install Wine first:
+```bash
+# Ubuntu/Debian
+sudo apt install wine
+
+# macOS with Homebrew
+brew install wine
+
+# Verify Wine installation
+wine --version
+```
 
 ### Step-by-Step Build Process
 
-#### Option 1: Use the Enhanced Windows Build Script
-```bash
+#### Option 1: Use the Enhanced Build Scripts
+
+**For Native Windows:**
+```cmd
 # Open Command Prompt or PowerShell as Administrator
 # Navigate to your project directory
 cd path\to\crawlops-studio
 
 # Run the enhanced Windows build script
 scripts\build-windows-local.bat
+```
+
+**For Linux/macOS with Wine:**
+```bash
+# Navigate to your project directory
+cd path/to/crawlops-studio
+
+# Make script executable and run
+chmod +x scripts/build-windows-wine.sh
+./scripts/build-windows-wine.sh
 ```
 
 This script includes:
@@ -74,8 +99,8 @@ After successful build, you'll find:
 ### Common Issues & Solutions
 
 #### Error: "wine is required"
-- **Cause**: Trying to build Windows executable from Linux/macOS
-- **Solution**: Use the Windows-specific build script on a Windows machine
+- **Cause**: Trying to build Windows executable from Linux/macOS without Wine
+- **Solution**: Install Wine on your system or use the enhanced build script which detects Wine automatically
 
 #### Error: "Cannot find module electron"
 - **Cause**: Electron not properly installed for Windows

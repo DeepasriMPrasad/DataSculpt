@@ -10,13 +10,21 @@ echo ====================================================
 REM Navigate to project root
 cd /d "%~dp0\.."
 
-REM Platform validation - ensure this is Windows
+REM Platform validation - Windows or Wine environment
 if not "%OS%"=="Windows_NT" (
-    echo ERROR: This script requires Windows OS
-    echo Current OS detected: %OS%
-    echo Please use appropriate scripts for your platform
-    pause
-    exit /b 1
+    echo INFO: Non-Windows OS detected: %OS%
+    echo Checking for Wine environment...
+    where wine >nul 2>&1
+    if %ERRORLEVEL% neq 0 (
+        echo ERROR: This script requires Windows OS or Wine environment
+        echo Please install Wine or run on Windows
+        pause
+        exit /b 1
+    ) else (
+        echo INFO: Wine detected - proceeding with cross-compilation
+    )
+) else (
+    echo INFO: Native Windows environment detected
 )
 
 echo [INFO] Platform validated: Windows %PROCESSOR_ARCHITECTURE%

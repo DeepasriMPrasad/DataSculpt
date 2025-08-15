@@ -44,10 +44,7 @@ module.exports = {
     "icon": "icon.ico",
     "requestedExecutionLevel": "asInvoker",
     "publisherName": "CrawlOps Studio",
-    "verifyUpdateCodeSignature": false,
-    "artifactName": "${productName} Setup ${version}.${ext}",
-    "certificateFile": null,
-    "certificatePassword": null
+    "verifyUpdateCodeSignature": false
   },
   "mac": {
     "target": [

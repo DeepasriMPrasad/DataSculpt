@@ -67,6 +67,25 @@ Preferred communication style: Simple, everyday language.
   - Enhanced `electron-builder.config.js` (Windows-optimized configuration)
 - **Status**: Ready for Windows local development and distribution
 
+### Wine Cross-Compilation Support ✅
+- **Issue**: User has Wine environment for Windows builds from Linux/macOS
+- **Solution**: Enhanced build configuration for Wine compatibility
+- **Implementation**:
+  - Fixed electron-builder configuration validation errors
+  - Created `scripts/build-windows-wine.sh` for Linux/macOS with Wine
+  - Enhanced `scripts/build-windows-local.bat` to detect Wine environments
+  - Removed invalid electron-builder properties causing validation failures
+- **Features Added**:
+  - Wine environment detection and validation
+  - Wine-specific cache management and cleanup
+  - Cross-platform build script with detailed Wine troubleshooting
+  - Platform-agnostic dependency handling
+- **Files Enhanced**:
+  - `electron-builder.config.js` (fixed validation errors)
+  - `scripts/build-windows-wine.sh` (new Wine build script)
+  - `BUILD_INSTRUCTIONS.md` (Wine setup and troubleshooting)
+- **Status**: Wine cross-compilation fully supported with detailed logging
+
 ### Comprehensive Logging System ✅
 - **Feature**: Dedicated logging system with separate log files for detailed application and scraping monitoring
 - **Implementation**:
