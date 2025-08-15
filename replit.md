@@ -31,9 +31,9 @@ Preferred communication style: Simple, everyday language.
 
 ### Content Processing Pipeline
 - **Visual Crawling**: All navigation occurs in visible Electron BrowserWindow instances
-- **SingleFile Integration**: Extension-based or core script injection for HTML capture
+- **SingleFile Integration**: Full web API implementation with CSS and image inlining for rich HTML capture
 - **PDF Generation**: Uses webContents.printToPDF from SingleFile HTML output
-- **Multi-format Export**: Parallel processing for JSON, Markdown, HTML, and PDF outputs
+- **Multi-format Export**: Parallel processing for JSON, Markdown, Rich HTML (SingleFile), and PDF outputs
 
 ### Queue Management System
 - **In-memory Queue**: Map-based URL queue with status tracking (queued, running, waiting_captcha, waiting_user, done, failed, skipped)
@@ -63,9 +63,10 @@ Preferred communication style: Simple, everyday language.
 ### Backend Libraries
 - **FastAPI**: Web framework for Python API
 - **crawl4ai**: Primary content extraction engine
+- **aiohttp**: Async HTTP client for web requests and SingleFile capture
+- **beautifulsoup4**: HTML parsing for SingleFile resource inlining
 - **pypdf/PyPDF2**: PDF processing and link extraction
 - **pdfminer.six**: Fallback PDF processing library
-- **aiohttp**: Async HTTP client for web requests
 
 ### Development & Build Tools
 - **Vite**: 7.1.2 for development server and bundling

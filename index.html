@@ -260,7 +260,7 @@
                 URL.revokeObjectURL(url);
             };
 
-            const handleDownload = (format) => {
+            const handleDownload = async (format) => {
                 if (!crawlResults) {
                     alert('No crawl results available for download');
                     return;
@@ -286,11 +286,31 @@
                         );
                         break;
                     case 'html':
-                        downloadFile(
-                            crawlResults.html || `<html><body><pre>${JSON.stringify(crawlResults.json, null, 2)}</pre></body></html>`,
-                            `${baseName}_${timestamp}.html`,
-                            'text/html'
-                        );
+                        // For HTML, use SingleFile to capture rich content with CSS and images
+                        try {
+                            console.log('🎨 Capturing rich HTML with SingleFile...');
+                            const singleFileResponse = await apiClient.post('/singlefile', {
+                                url: crawlResults.url,
+                                timeout: 30
+                            });
+                            
+                            downloadFile(
+                                singleFileResponse.html,
+                                `${baseName}_${timestamp}_singlefile.html`,
+                                'text/html'
+                            );
+                            
+                            alert(`✅ Rich HTML downloaded!\n• CSS styles inlined\n• Images embedded\n• File size: ${Math.round(singleFileResponse.size_bytes / 1024)} KB`);
+                        } catch (error) {
+                            console.error('SingleFile capture failed:', error);
+                            // Fallback to basic HTML
+                            downloadFile(
+                                crawlResults.html || `<html><body><pre>${JSON.stringify(crawlResults.json, null, 2)}</pre></body></html>`,
+                                `${baseName}_${timestamp}_basic.html`,
+                                'text/html'
+                            );
+                            alert('⚠️ Rich HTML capture failed, downloaded basic HTML instead');
+                        }
                         break;
                     case 'txt':
                         downloadFile(
