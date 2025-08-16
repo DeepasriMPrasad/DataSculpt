@@ -434,6 +434,36 @@
                             'text/plain'
                         );
                         break;
+                    case 'csv':
+                        // Download CSV with all parsed URLs
+                        try {
+                            console.log('📊 Downloading CSV with all parsed URLs...');
+                            const response = await fetch(`${API_BASE}/export/csv`, {
+                                method: 'GET',
+                                mode: 'cors'
+                            });
+                            
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                            }
+                            
+                            const blob = await response.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `${baseName}_urls_${timestamp}.csv`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            
+                            console.log('CSV downloaded successfully');
+                            alert('✅ CSV downloaded with all parsed URLs!\n\nColumns include: Number, Parent Source, Parsed URL, Short Name, URL Type, Status, Page Title, Domain');
+                        } catch (error) {
+                            console.error('CSV download failed:', error);
+                            alert('Failed to download CSV: ' + error.message);
+                        }
+                        break;
                     case 'pdf':
                         // For PDF, create a simple HTML version and let browser handle PDF generation
                         const pdfContent = `<!DOCTYPE html>
@@ -619,6 +649,13 @@
                         },
                             React.createElement(Icons.Download, { className: 'w-4 h-4 mr-2' }),
                             'PDF'
+                        ),
+                        React.createElement('button', {
+                            onClick: () => handleDownload('csv'),
+                            className: 'flex items-center justify-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors'
+                        },
+                            React.createElement(Icons.Download, { className: 'w-4 h-4 mr-2' }),
+                            'CSV URLs'
                         )
                     )
                 ),

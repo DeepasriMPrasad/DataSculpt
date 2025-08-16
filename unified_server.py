@@ -4,6 +4,7 @@ Unified server that serves both the React frontend and the FastAPI backend
 This solves the Replit networking issues by having everything on port 5000
 """
 
+import csv
 import os
 import sys
 import json
@@ -11,6 +12,7 @@ import logging
 import platform
 from pathlib import Path
 from datetime import datetime
+from io import StringIO
 from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -720,6 +722,65 @@ async def stop_crawl():
 async def get_crawl_status():
     """Get current crawl status."""
     return CrawlStatus(**crawl_state)
+
+@app.get("/api/export/csv")
+async def export_urls_csv():
+    """Export all parsed URLs from last crawl as CSV."""
+    from fastapi.responses import Response
+    
+    if last_crawl_results is None:
+        raise HTTPException(status_code=404, detail="No crawl results available for CSV export")
+    
+    try:
+        # Generate CSV content
+        csv_content = generate_urls_csv(last_crawl_results, "Last Crawl")
+        
+        # Create filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"crawl_urls_{timestamp}.csv"
+        
+        # Return CSV as downloadable file
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Type": "text/csv; charset=utf-8"
+            }
+        )
+        
+    except Exception as e:
+        api_logger.error(f"CSV export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"CSV export failed: {str(e)}")
+
+@app.post("/api/export/csv")
+async def export_custom_csv(crawl_data: dict):
+    """Export URLs from provided crawl data as CSV."""
+    from fastapi.responses import Response
+    
+    try:
+        # Generate CSV content from provided data
+        source_name = crawl_data.get('source', crawl_data.get('crawl_id', 'Custom Export'))
+        csv_content = generate_urls_csv(crawl_data, source_name)
+        
+        # Create filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_source = "".join(c for c in source_name if c.isalnum() or c in (' ', '-', '_')).rstrip()[:30]
+        filename = f"urls_{safe_source}_{timestamp}.csv".replace(' ', '_')
+        
+        # Return CSV as downloadable file
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}",
+                "Content-Type": "text/csv; charset=utf-8"
+            }
+        )
+        
+    except Exception as e:
+        api_logger.error(f"Custom CSV export failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Custom CSV export failed: {str(e)}")
 
 # Extract endpoint (alias for crawl/start for frontend compatibility)
 @app.post("/api/extract")
@@ -1586,6 +1647,126 @@ def get_session_for_domain(domain: str) -> dict:
         return {}
     except:
         return {}
+
+def generate_urls_csv(crawl_data: dict, source_name: str = "crawl") -> str:
+    """Generate CSV content with all parsed URLs from crawl data."""
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # CSV Headers
+    writer.writerow([
+        'Number',
+        'Parent Source', 
+        'Parsed URL',
+        'Short Name/Identifier',
+        'URL Type',
+        'Status',
+        'Page Title',
+        'Domain'
+    ])
+    
+    url_counter = 1
+    
+    # Helper function to get short identifier from URL
+    def get_url_identifier(url: str) -> str:
+        try:
+            parsed = urlparse(url)
+            path_parts = [p for p in parsed.path.split('/') if p]
+            if path_parts:
+                # Use last meaningful path segment
+                last_part = path_parts[-1]
+                if '.' in last_part:
+                    # Remove file extension for cleaner identifier
+                    last_part = last_part.split('.')[0]
+                return last_part[:50]  # Limit length
+            elif parsed.netloc:
+                # Use domain if no path
+                return parsed.netloc.replace('www.', '')[:30]
+            else:
+                return "root"
+        except:
+            return url[:30]
+    
+    # Process pages from crawl results
+    if isinstance(crawl_data, dict):
+        source_url = crawl_data.get('source', source_name)
+        
+        # Get all pages
+        pages = crawl_data.get('pages', [])
+        if not pages and 'json' in crawl_data:
+            # Handle nested structure
+            pages = crawl_data['json'].get('pages', [])
+        
+        for page in pages:
+            page_url = page.get('url', '')
+            page_title = page.get('title', '')
+            page_success = page.get('success', True)
+            
+            if page_url:
+                parsed_url = urlparse(page_url)
+                writer.writerow([
+                    url_counter,
+                    source_url,
+                    page_url,
+                    get_url_identifier(page_url),
+                    'Main Page',
+                    'Success' if page_success else 'Failed',
+                    page_title[:100] if page_title else '',
+                    parsed_url.netloc
+                ])
+                url_counter += 1
+            
+            # Process links found in this page
+            links = page.get('links', [])
+            for link in links:
+                if isinstance(link, str):
+                    link_url = link
+                    link_title = ''
+                else:
+                    link_url = link.get('url', link.get('href', ''))
+                    link_title = link.get('text', link.get('title', ''))
+                
+                if link_url and link_url.startswith(('http://', 'https://')):
+                    parsed_link = urlparse(link_url)
+                    writer.writerow([
+                        url_counter,
+                        page_url if page_url else source_url,
+                        link_url,
+                        get_url_identifier(link_url),
+                        'Discovered Link',
+                        'Found',
+                        link_title[:100] if link_title else '',
+                        parsed_link.netloc
+                    ])
+                    url_counter += 1
+        
+        # Process any top-level links if no pages structure
+        if not pages and 'links' in crawl_data:
+            for link in crawl_data['links']:
+                if isinstance(link, str):
+                    link_url = link
+                    link_title = ''
+                else:
+                    link_url = link.get('url', link.get('href', ''))
+                    link_title = link.get('text', link.get('title', ''))
+                
+                if link_url and link_url.startswith(('http://', 'https://')):
+                    parsed_link = urlparse(link_url)
+                    writer.writerow([
+                        url_counter,
+                        source_url,
+                        link_url,
+                        get_url_identifier(link_url),
+                        'Extracted Link',
+                        'Found',
+                        link_title[:100] if link_title else '',
+                        parsed_link.netloc
+                    ])
+                    url_counter += 1
+    
+    csv_content = output.getvalue()
+    output.close()
+    return csv_content
 
 # Serve the main HTML file
 @app.get("/")
