@@ -18,17 +18,28 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 
-# Fix Windows event loop policy for aiodns compatibility
+# Fix Windows event loop policy for aiodns compatibility and Playwright issues
 if platform.system() == 'Windows':
     try:
         import asyncio
         if sys.version_info >= (3, 8):
-            # Windows ProactorEventLoop doesn't support aiodns
-            # Force SelectorEventLoop on Windows
-            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-            logging.info("Set Windows SelectorEventLoop policy for aiodns compatibility")
+            # Windows ProactorEventLoop doesn't support aiodns and has Playwright subprocess issues
+            # Force SelectorEventLoop on Windows for better compatibility
+            if hasattr(asyncio, 'WindowsSelectorEventLoopPolicy'):
+                asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+                logging.info("Set Windows SelectorEventLoop policy for compatibility")
+            else:
+                # Fallback for older Python versions
+                logging.warning("WindowsSelectorEventLoopPolicy not available, using default policy")
     except Exception as e:
         logging.warning(f"Failed to set Windows event loop policy: {e}")
+        
+    # Global Playwright disable flag for Windows if subprocess issues persist  
+    import os
+    os.environ.setdefault('PLAYWRIGHT_DISABLE_SUBPROCESS', '1')
+    os.environ.setdefault('CRAWL4AI_BROWSER_TYPE', 'http_only')
+    os.environ.setdefault('DISABLE_BROWSER_AUTOMATION', '1')
+    logging.info("Set Windows compatibility environment variables for Playwright issues")
 
 # Add the API directory to the path
 sys.path.insert(0, str(Path(__file__).parent / "apps" / "api"))
@@ -207,45 +218,59 @@ async def crawl_single_page(url: str, crawl_request: CrawlRequest):
             crawler_headers.update(crawl_request.custom_headers)
             scraping_logger.info(f"Added {len(crawl_request.custom_headers)} custom headers for browser automation: {url}")
 
-        # Try crawl4ai first with enhanced JavaScript and cookies
-        try:
-            async with AsyncWebCrawler(
-                headless=False,
-                browser_type="chromium",
-                verbose=True,
-                always_by_pass_cache=True,
-                delay_before_return_html=max(0.1, min(30.0, crawl_request.delay_seconds)),
-                headers=crawler_headers if crawler_headers else None
-            ) as crawler:
-                result = await crawler.arun(
-                    url=url,
-                    js_code="window.scrollTo(0, document.body.scrollHeight); await new Promise(resolve => setTimeout(resolve, 2000));",
-                    wait_for="body",
-                    process_iframes=True,
-                    remove_overlay_elements=True,
-                    simulate_user=True,
-                    override_navigator=True
-                )
-                
-                if result.success:
-                    extracted_text = result.cleaned_html or result.markdown or "No content extracted"
-                    links = result.links if result.links else []
-                    return {
-                        "success": True,
-                        "title": result.metadata.get('title', 'No title') if result.metadata else 'No title',
-                        "content": extracted_text,
-                        "word_count": len(extracted_text.split()) if extracted_text else 0,
-                        "links": links,
-                        "images": result.media[:5] if result.media else [],
-                        "status_code": result.status_code,
-                        "method": "browser_automation"
-                    }
-                else:
-                    raise Exception(f"Browser automation failed: {result.error_message}")
+        # Check Windows compatibility first
+        use_browser_automation = True
+        if platform.system() == 'Windows' and os.environ.get('DISABLE_BROWSER_AUTOMATION', '0') == '1':
+            use_browser_automation = False
+            scraping_logger.info(f"Skipping browser automation for {url} due to Windows compatibility issues")
+        
+        # Try crawl4ai first with enhanced JavaScript and cookies (if enabled)
+        if use_browser_automation:
+            try:
+                async with AsyncWebCrawler(
+                    headless=False,
+                    browser_type="chromium",
+                    verbose=True,
+                    always_by_pass_cache=True,
+                    delay_before_return_html=max(0.1, min(30.0, crawl_request.delay_seconds)),
+                    headers=crawler_headers if crawler_headers else None
+                ) as crawler:
+                    result = await crawler.arun(
+                        url=url,
+                        js_code="window.scrollTo(0, document.body.scrollHeight); await new Promise(resolve => setTimeout(resolve, 2000));",
+                        wait_for="body",
+                        process_iframes=True,
+                        remove_overlay_elements=True,
+                        simulate_user=True,
+                        override_navigator=True
+                    )
                     
-        except Exception as browser_error:
-            # Fallback to enhanced HTTP extraction
-            scraping_logger.warning(f"Browser automation failed for {url}: {str(browser_error)}")
+                    if result and hasattr(result, 'success') and result.success:
+                        extracted_text = getattr(result, 'cleaned_html', '') or getattr(result, 'markdown', '') or "No content extracted"
+                        links = getattr(result, 'links', []) if hasattr(result, 'links') else []
+                        metadata = getattr(result, 'metadata', {}) if hasattr(result, 'metadata') else {}
+                        media = getattr(result, 'media', []) if hasattr(result, 'media') else []
+                        status_code = getattr(result, 'status_code', 200) if hasattr(result, 'status_code') else 200
+                        
+                        return {
+                            "success": True,
+                            "title": metadata.get('title', 'No title') if metadata else 'No title',
+                            "content": extracted_text,
+                            "word_count": len(extracted_text.split()) if extracted_text else 0,
+                            "links": links,
+                            "images": media[:5] if media else [],
+                            "status_code": status_code,
+                            "method": "browser_automation"
+                        }
+                    else:
+                        error_msg = getattr(result, 'error_message', 'Unknown error') if result else 'No result returned'
+                        raise Exception(f"Browser automation failed: {error_msg}")
+                        
+            except Exception as browser_error:
+                # Fallback to enhanced HTTP extraction
+                scraping_logger.warning(f"Browser automation failed for {url}: {str(browser_error)}")
+                scraping_logger.info(f"Falling back to HTTP extraction for {url}")
+        else:
             scraping_logger.info(f"Falling back to HTTP extraction for {url}")
             
             import aiohttp

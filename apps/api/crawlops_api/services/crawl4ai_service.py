@@ -25,13 +25,20 @@ class Crawl4aiService:
         self._initialized = False
         
     async def _initialize(self):
-        """Initialize the crawl4ai crawler."""
+        """Initialize the crawl4ai crawler with Windows compatibility."""
         if self._initialized:
             return
             
         try:
             if AsyncWebCrawler is None:
                 raise ImportError("crawl4ai package not available")
+            
+            # Check for Windows Playwright subprocess issues
+            import platform
+            import os
+            if platform.system() == 'Windows' and os.environ.get('DISABLE_BROWSER_AUTOMATION', '0') == '1':
+                logger.warning("Browser automation disabled on Windows due to Playwright subprocess issues")
+                raise ImportError("Browser automation disabled for Windows compatibility")
                 
             self.crawler = AsyncWebCrawler(
                 # Configure crawler options
@@ -44,7 +51,7 @@ class Crawl4aiService:
             logger.info("Crawl4ai service initialized successfully")
             
         except Exception as e:
-            logger.error(f"Failed to initialize crawl4ai: {str(e)}")
+            logger.warning(f"Failed to initialize crawl4ai, using HTTP fallback: {str(e)}")
             # Fall back to basic HTTP extraction
             self.crawler = None
             self._initialized = True

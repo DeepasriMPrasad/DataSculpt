@@ -1,0 +1,29 @@
+{
+  "crawl_summary": {
+    "start_url": "https://httpbin.org/json",
+    "total_pages": 1,
+    "successful_pages": 1,
+    "failed_pages": 0,
+    "total_words": 44,
+    "unique_links": 0,
+    "unique_images": 0,
+    "max_depth_reached": 0
+  },
+  "pages": [
+    {
+      "success": true,
+      "title": "No title",
+      "content": "{ \"slideshow\": { \"author\": \"Yours Truly\", \"date\": \"date of publication\", \"slides\": [ { \"title\": \"Wake up to WonderWidgets!\", \"type\": \"all\" }, { \"items\": [ \"Why WonderWidgets are great\", \"Who buys WonderWidgets\" ], \"title\": \"Overview\", \"type\": \"all\" } ], \"title\": \"Sample Slide Show\" } }",
+      "word_count": 44,
+      "links": [],
+      "images": [],
+      "status_code": 200,
+      "method": "http_extraction",
+      "url": "https://httpbin.org/json",
+      "depth": 0,
+      "crawl_order": 1
+    }
+  ],
+  "combined_content": "\n\n=== No title (https://httpbin.org/json) ===\n{ \"slideshow\": { \"author\": \"Yours Truly\", \"date\": \"date of publication\", \"slides\": [ { \"title\": \"Wake up to WonderWidgets!\", \"type\": \"all\" }, { \"items\": [ \"Why WonderWidgets are great\", \"Who buys WonderWidgets\" ], \"title\": \"Overview\", \"type\": \"all\" } ], \"title\": \"Sample Slide Show\" } }",
+  "timestamp": "2025-08-16T00:15:14.456797"
+}
