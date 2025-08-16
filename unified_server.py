@@ -11,7 +11,7 @@ import logging
 import platform
 from pathlib import Path
 from datetime import datetime
-from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -955,7 +955,7 @@ async def singlefile_capture(crawl_request: CrawlRequest):
             "capture_time": "0.00s"
         }
 
-# PDF processing endpoint
+# PDF processing endpoints
 @app.post("/api/pdf/extract")
 async def extract_pdf_links(file: UploadFile):
     """Extract links from uploaded PDF file."""
@@ -1000,6 +1000,357 @@ async def extract_pdf_links(file: UploadFile):
             "error": str(e),
             "filename": file.filename
         }
+
+@app.post("/api/pdf/parse")
+async def parse_local_pdf(
+    file: UploadFile = File(...),
+    export_formats: str = Form("json,md,html,txt"),
+    extract_links: bool = Form(True),
+    follow_links: bool = Form(False),
+    max_pages_from_links: int = Form(5),
+    depth: int = Form(1)
+):
+    """Parse local PDF file and extract content with optional link following."""
+    try:
+        if not file.filename.endswith('.pdf'):
+            raise HTTPException(status_code=400, detail="File must be a PDF")
+        
+        api_logger.info(f"Local PDF parsing started: {file.filename}")
+        scraping_logger.info(f"Processing local PDF: {file.filename}")
+        
+        # Save uploaded file temporarily
+        import tempfile
+        import shutil
+        from io import BytesIO
+        
+        pdf_content = await file.read()
+        
+        # Extract PDF content and metadata
+        pdf_data = await extract_pdf_content(pdf_content, file.filename)
+        
+        if not pdf_data["success"]:
+            raise HTTPException(status_code=400, detail=pdf_data["error"])
+        
+        # Create output filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_filename = file.filename.replace('.pdf', '').replace(' ', '_').replace('/', '_')
+        base_filename = f"pdf_parse_{safe_filename}_{timestamp}"
+        
+        # Process export formats
+        formats_list = [f.strip() for f in export_formats.split(',')]
+        
+        # Create results structure compatible with web crawling
+        results = {
+            "success": True,
+            "message": f"PDF parsing completed: {file.filename}",
+            "crawl_id": f"pdf_{hash(file.filename + timestamp) % 10000}",
+            "source": f"Local PDF: {file.filename}",
+            "meta": {
+                "total_pages": pdf_data["total_pages"],
+                "successful_pages": 1,
+                "failed_pages": 0,
+                "total_words": pdf_data["word_count"],
+                "unique_links": len(pdf_data["links"]),
+                "unique_images": 0,
+                "max_depth_reached": 0,
+                "output_folder": "crawl_output",
+                "files_saved": []
+            },
+            "json": {
+                "crawl_summary": {
+                    "start_source": f"Local PDF: {file.filename}",
+                    "total_pages": 1,
+                    "successful_pages": 1,
+                    "failed_pages": 0,
+                    "total_words": pdf_data["word_count"],
+                    "unique_links": len(pdf_data["links"]),
+                    "unique_images": 0,
+                    "max_depth_reached": 0
+                },
+                "pages": [{
+                    "success": True,
+                    "title": pdf_data["title"] or file.filename,
+                    "content": pdf_data["content"],
+                    "word_count": pdf_data["word_count"],
+                    "links": [link["url"] for link in pdf_data["links"]],
+                    "images": [],
+                    "source_type": "pdf",
+                    "filename": file.filename,
+                    "total_pdf_pages": pdf_data["total_pages"],
+                    "depth": 0,
+                    "crawl_order": 1
+                }],
+                "combined_content": f"\n\n=== {pdf_data['title'] or file.filename} ===\n{pdf_data['content']}",
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+        
+        # Add markdown format
+        if "md" in formats_list or "markdown" in formats_list:
+            results["markdown"] = f"""
+# {pdf_data['title'] or file.filename}
+**Source:** Local PDF File  
+**Pages:** {pdf_data['total_pages']}  
+**Words:** {pdf_data['word_count']}  
+**Links Found:** {len(pdf_data['links'])}
+
+{pdf_data['content']}
+
+## Links Found in PDF
+{chr(10).join(f"- [{link['url']}]({link['url']}) (Page {link['page']})" for link in pdf_data['links'])}
+"""
+        
+        # Add HTML format
+        if "html" in formats_list:
+            results["html"] = f"""<html><head><title>PDF Parse Results</title></head><body>
+<div style='margin: 20px 0; border-bottom: 1px solid #ccc; padding-bottom: 20px;'>
+<h2>{pdf_data['title'] or file.filename}</h2>
+<p><strong>Source:</strong> Local PDF File</p>
+<p><strong>Pages:</strong> {pdf_data['total_pages']}</p>
+<p><strong>Words:</strong> {pdf_data['word_count']}</p>
+<p><strong>Links Found:</strong> {len(pdf_data['links'])}</p>
+<div>{pdf_data['content'].replace(chr(10), '<br>')}</div>
+<h3>Links Found</h3>
+<ul>{''.join(f"<li><a href='{link['url']}'>{link['url']}</a> (Page {link['page']})</li>" for link in pdf_data['links'])}</ul>
+</div></body></html>"""
+        
+        # Add text format
+        if "txt" in formats_list or "text" in formats_list:
+            results["text"] = f"""
+=== {pdf_data['title'] or file.filename} ===
+Source: Local PDF File
+Pages: {pdf_data['total_pages']}
+Words: {pdf_data['word_count']}
+Links Found: {len(pdf_data['links'])}
+
+{pdf_data['content']}
+
+Links Found:
+{chr(10).join(f"- {link['url']} (Page {link['page']})" for link in pdf_data['links'])}
+"""
+        
+        # Save files to crawl_output
+        output_dir = Path("./crawl_output")
+        output_dir.mkdir(exist_ok=True)
+        
+        saved_files = []
+        
+        # Save JSON
+        if "json" in formats_list:
+            json_file = output_dir / f"{base_filename}.json"
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(results["json"], f, indent=2, ensure_ascii=False)
+            saved_files.append(json_file.name)
+        
+        # Save Markdown
+        if "md" in formats_list or "markdown" in formats_list:
+            md_file = output_dir / f"{base_filename}.md"
+            with open(md_file, 'w', encoding='utf-8') as f:
+                f.write(results["markdown"])
+            saved_files.append(md_file.name)
+        
+        # Save HTML
+        if "html" in formats_list:
+            html_file = output_dir / f"{base_filename}.html"
+            with open(html_file, 'w', encoding='utf-8') as f:
+                f.write(results["html"])
+            saved_files.append(html_file.name)
+        
+        # Save Text
+        if "txt" in formats_list or "text" in formats_list:
+            txt_file = output_dir / f"{base_filename}.txt"
+            with open(txt_file, 'w', encoding='utf-8') as f:
+                f.write(results["text"])
+            saved_files.append(txt_file.name)
+        
+        results["meta"]["files_saved"] = saved_files
+        
+        # If follow_links is enabled, crawl discovered links
+        if follow_links and pdf_data["links"]:
+            scraping_logger.info(f"Following {len(pdf_data['links'])} links from PDF...")
+            
+            # Create crawl request for discovered links
+            additional_pages = []
+            crawled_count = 0
+            
+            for link_info in pdf_data["links"][:max_pages_from_links]:
+                if crawled_count >= max_pages_from_links:
+                    break
+                    
+                try:
+                    # Create a basic crawl request for the link
+                    from urllib.parse import urlparse
+                    link_url = link_info["url"]
+                    
+                    # Skip non-HTTP URLs
+                    parsed = urlparse(link_url)
+                    if not parsed.scheme.startswith('http'):
+                        continue
+                    
+                    scraping_logger.info(f"Crawling link from PDF page {link_info['page']}: {link_url}")
+                    
+                    # Create a simple crawl request
+                    simple_request = CrawlRequest(
+                        url=link_url,
+                        max_depth=0,  # Don't go deeper from PDF links
+                        max_pages=1,
+                        export_formats=["json"],
+                        auth_type="none",
+                        ignore_robots=True
+                    )
+                    
+                    # Crawl the single page
+                    page_result = await crawl_single_page(link_url, simple_request)
+                    
+                    if page_result and page_result.get("success"):
+                        additional_pages.append({
+                            "success": True,
+                            "title": page_result.get("title", "Unknown"),
+                            "content": page_result.get("content", ""),
+                            "word_count": page_result.get("word_count", 0),
+                            "links": page_result.get("links", []),
+                            "images": page_result.get("images", []),
+                            "source_type": "web_from_pdf",
+                            "pdf_page": link_info["page"],
+                            "url": link_url,
+                            "depth": 1,
+                            "crawl_order": crawled_count + 2
+                        })
+                        crawled_count += 1
+                        
+                except Exception as e:
+                    scraping_logger.error(f"Failed to crawl PDF link {link_url}: {e}")
+                    continue
+            
+            if additional_pages:
+                # Update results with additional pages
+                results["json"]["pages"].extend(additional_pages)
+                results["json"]["crawl_summary"]["total_pages"] += len(additional_pages)
+                results["json"]["crawl_summary"]["successful_pages"] += len(additional_pages)
+                results["json"]["crawl_summary"]["total_words"] += sum(p.get("word_count", 0) for p in additional_pages)
+                results["json"]["crawl_summary"]["max_depth_reached"] = 1
+                
+                results["meta"]["total_pages"] += len(additional_pages)
+                results["meta"]["successful_pages"] += len(additional_pages)
+                results["meta"]["total_words"] += sum(p.get("word_count", 0) for p in additional_pages)
+                results["meta"]["max_depth_reached"] = 1
+                
+                # Update combined content
+                for page in additional_pages:
+                    results["json"]["combined_content"] += f"\n\n=== {page['title']} ({page['url']}) ===\n{page['content']}"
+                
+                # Re-save JSON with additional pages
+                if "json" in formats_list:
+                    json_file = output_dir / f"{base_filename}.json"
+                    with open(json_file, 'w', encoding='utf-8') as f:
+                        json.dump(results["json"], f, indent=2, ensure_ascii=False)
+                
+                scraping_logger.info(f"Successfully crawled {len(additional_pages)} additional pages from PDF links")
+        
+        api_logger.info(f"PDF parsing completed: {file.filename}, {len(saved_files)} files saved")
+        
+        return results
+        
+    except Exception as e:
+        api_logger.error(f"PDF parsing failed: {str(e)}")
+        scraping_logger.error(f"PDF parsing error for {file.filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"PDF parsing failed: {str(e)}")
+
+async def extract_pdf_content(pdf_content: bytes, filename: str) -> dict:
+    """Extract text content, metadata, and links from PDF bytes."""
+    try:
+        import pypdf
+        from io import BytesIO
+        
+        pdf_reader = pypdf.PdfReader(BytesIO(pdf_content))
+        
+        # Extract text content from all pages
+        full_text = ""
+        links = []
+        
+        for page_num, page in enumerate(pdf_reader.pages):
+            # Extract text
+            page_text = page.extract_text()
+            if page_text:
+                full_text += f"\n\nPage {page_num + 1}:\n{page_text.strip()}"
+            
+            # Extract links
+            if '/Annots' in page:
+                for annot in page['/Annots']:
+                    try:
+                        annot_obj = annot.get_object()
+                        if annot_obj.get('/Subtype') == '/Link':
+                            if '/A' in annot_obj:
+                                action = annot_obj['/A']
+                                if action.get('/S') == '/URI':
+                                    uri = action.get('/URI')
+                                    if uri:
+                                        links.append({
+                                            "url": str(uri),
+                                            "page": page_num + 1
+                                        })
+                    except Exception as e:
+                        # Skip malformed annotations
+                        continue
+        
+        # Extract metadata
+        metadata = pdf_reader.metadata or {}
+        title = metadata.get('/Title', filename)
+        if title:
+            title = str(title).strip()
+        
+        # Clean up text
+        full_text = full_text.strip()
+        word_count = len(full_text.split()) if full_text else 0
+        
+        return {
+            "success": True,
+            "content": full_text,
+            "title": title,
+            "total_pages": len(pdf_reader.pages),
+            "word_count": word_count,
+            "links": links,
+            "metadata": {
+                "author": str(metadata.get('/Author', '')) if metadata.get('/Author') else '',
+                "subject": str(metadata.get('/Subject', '')) if metadata.get('/Subject') else '',
+                "creator": str(metadata.get('/Creator', '')) if metadata.get('/Creator') else '',
+                "producer": str(metadata.get('/Producer', '')) if metadata.get('/Producer') else '',
+                "creation_date": str(metadata.get('/CreationDate', '')) if metadata.get('/CreationDate') else '',
+                "modification_date": str(metadata.get('/ModDate', '')) if metadata.get('/ModDate') else ''
+            }
+        }
+        
+    except Exception as e:
+        # Fallback to pdfminer for problematic PDFs
+        try:
+            from pdfminer.high_level import extract_text
+            from pdfminer.high_level import extract_pages
+            from pdfminer.layout import LTTextContainer
+            
+            full_text = extract_text(BytesIO(pdf_content))
+            word_count = len(full_text.split()) if full_text else 0
+            
+            return {
+                "success": True,
+                "content": full_text.strip(),
+                "title": filename,
+                "total_pages": 1,  # pdfminer doesn't easily provide page count
+                "word_count": word_count,
+                "links": [],  # pdfminer doesn't easily extract links
+                "metadata": {}
+            }
+            
+        except Exception as fallback_error:
+            return {
+                "success": False,
+                "error": f"PDF extraction failed with both pypdf and pdfminer: {str(e)}, {str(fallback_error)}",
+                "content": "",
+                "title": filename,
+                "total_pages": 0,
+                "word_count": 0,
+                "links": [],
+                "metadata": {}
+            }
 
 # SSO Authentication System
 import sqlite3
