@@ -1,0 +1,152 @@
+{
+  "crawl_summary": {
+    "start_url": "https://scrapethissite.com/pages/",
+    "total_pages": 5,
+    "successful_pages": 5,
+    "failed_pages": 0,
+    "total_words": 1138,
+    "unique_links": 13,
+    "unique_images": 11,
+    "max_depth_reached": 1
+  },
+  "pages": [
+    {
+      "success": true,
+      "title": "Learn Web Scraping | Scrape This Site | A public sandbox for learning web scraping",
+      "content": "Learn Web Scraping | Scrape This Site | A public sandbox for learning web scraping Scrape This Site Sandbox Lessons FAQ Login Web Scraping Sandbox Countries of the World: A Simple Example A single page that lists information about all the countries in the world. Good for those just get started with web scraping. Hockey Teams: Forms, Searching and Pagination Browse through a database of NHL team stats since 1990. Practice building a scraper that handles common website interface components. Oscar Winning Films: AJAX and Javascript Click through a bunch of great films. Learn how content is added to the page asynchronously with Javascript and how you can scrape it. Turtles All the Way Down: Frames & iFrames Some older sites might still use frames to break up thier pages. Modern ones might be using iFrames to expose data. Learn about turtles as you scrape content inside frames. Advanced Topics: Real World Challenges You'll Encounter Scraping real websites, you're likely run into a number of common gotchas. Get practice with spoofing headers, handling logins & session cookies, finding CSRF tokens, and other common network errors. Lessons and Videos © Hartley Brody 2023",
+      "word_count": 192,
+      "links": [
+        "https://scrapethissite.com/",
+        "https://scrapethissite.com/pages/",
+        "https://scrapethissite.com/lessons/",
+        "https://scrapethissite.com/faq/",
+        "https://scrapethissite.com/login/",
+        "https://scrapethissite.com/pages/simple/",
+        "https://scrapethissite.com/pages/forms/",
+        "https://scrapethissite.com/pages/ajax-javascript/",
+        "https://scrapethissite.com/pages/frames/",
+        "https://scrapethissite.com/pages/advanced/"
+      ],
+      "images": [
+        "https://scrapethissite.com/static/images/scraper-icon.png",
+        "https://www.facebook.com/tr?id=764287443701341&ev=PageView&noscript=1",
+        "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/950945448/?guid=ON&script=0"
+      ],
+      "status_code": 200,
+      "method": "http_extraction",
+      "url": "https://scrapethissite.com/pages/",
+      "depth": 0,
+      "crawl_order": 1
+    },
+    {
+      "success": true,
+      "title": "Scrape This Site | A public sandbox for learning web scraping",
+      "content": "Scrape This Site | A public sandbox for learning web scraping Scrape This Site Sandbox Lessons FAQ Login Scrape This Site The internet's best resource for learning web scraping . Explore Sandbox Begin Lessons → Lessons and Videos © Hartley Brody 2023",
+      "word_count": 42,
+      "links": [
+        "https://scrapethissite.com/",
+        "https://scrapethissite.com/pages/",
+        "https://scrapethissite.com/lessons/",
+        "https://scrapethissite.com/faq/",
+        "https://scrapethissite.com/login/",
+        "https://scrapethissite.com/pages/",
+        "https://scrapethissite.com/lessons/"
+      ],
+      "images": [
+        "https://scrapethissite.com/static/images/scraper-icon.png",
+        "https://scrapethissite.com/static/images/scraper-icon.png",
+        "https://www.facebook.com/tr?id=764287443701341&ev=PageView&noscript=1",
+        "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/950945448/?guid=ON&script=0"
+      ],
+      "status_code": 200,
+      "method": "http_extraction",
+      "url": "https://scrapethissite.com/",
+      "depth": 1,
+      "crawl_order": 2
+    },
+    {
+      "success": true,
+      "title": "Sign Up | Scrape This Site | A public sandbox for learning web scraping",
+      "content": "Sign Up | Scrape This Site | A public sandbox for learning web scraping Scrape This Site Sandbox Lessons FAQ Login A course to help you Scrape Any Website Learn how to build your own web scrapers and start collecting the data you need. Get Started Now Purchase securely with Paypal or Credit Card. Build your first scraper in minutes! \"The course was great and well worth the tuition. It was easy to follow, and I was able to conquer the basics of web scraping very quickly.\" Paul Blank \"I really liked your course, because it showed me how it is possible to do things in a simple and elegant way and saved me a lot of time (days if not weeks).\" Lev Selector Follow along step-by-step... Watch as I guide you through the entire process of building a web scraper I'll show you the most common problems you'll encounter, and how to get past them Download my sample code from each lesson and run it yourself You'll Learn How to Scrape: Tables Forms Pagination Search Boxes Javascript and AJAX iFrames eCommerce Websites Logins & Sessions You'll also learn how to export your data into an excel spreadsheet or database for easy access. Get access to: Dozens of unique lessons covering the most common scraping problems Downloadable, working python code samples that you can use right away A community discussion around each lesson, with me answering questions Almost 2GB of video content that you can view online or download and take with you If you're not happy with the course, you'll get a 100% refund. There's nothing to lose . Learn more about the course: Your browser doesn't support HTML5 video :( Try using the latest version of Firefox or Chrome Get Started Now Purchase securely with Paypal or Credit Card. \"I loved the course and believed it was worth every penny!\" Nicholas Renotte This course has been years in the making . In 2012, I published a blog post titled \"I Don’t Need No Stinking API: Web Scraping For Fun and Profit\" documenting some lessons I had learned scraping a few different sites. The post shot to the top of Hacker News and has since been viewed by over 250,000 people. It resonated with people because of its simple but important lessons on pulling data from websites . It has been used as required reading material in some college-level courses, and it even outranked the Wikipedia article when you searched for \"web scraping\" in Google. In 2013, I published my first book titled \"The Ultimate Guide to Web Scraping.\" The book has since sold thousands of copies to people from all kinds of backgrounds. I heard from everyone from graduate students and software developers to small business owners and journalists . Many wrote in with praise for how the book had helped them finally understand the technical concepts and collect the data they were looking for. The number one piece of feedback I got about the book was that people wanted more hands-on examples. They wanted to practice building scrapers for simplified sites that were easy to learn. Some people just wanted working code that they could tweak and use for their own purposes. That's what led me to create Scrape This Site — the world's best place to learn web scraping . I wanted to create a site that was: Built for beginners — no technical background required Easy to follow, with simple step-by-step instructions Focused on the fundamentals that apply to every website Thorough, giving plenty of examples and use cases Get Lifetime Access! View all the latest content whenever new lessons are added Each lesson will always have the latest, up-to-date information Need Help? Each lesson has a discussion forum and FAQ Connect with me personally, as I jump in to answer your questions Get Started Now Purchase securely with Paypal or Credit Card. © Hartley Brody × Before You Go… $50 Off Code Use promo code LASTCHANCE to get $50 off the full course price, but only for a limited time: 9:00 Get Started Now Purchase securely with Paypal or Credit Card. Lessons and Videos © Hartley Brody 2023",
+      "word_count": 694,
+      "links": [
+        "https://scrapethissite.com/",
+        "https://scrapethissite.com/pages/",
+        "https://scrapethissite.com/lessons/",
+        "https://scrapethissite.com/faq/",
+        "https://scrapethissite.com/login/",
+        "https://gum.co/oLpqb?wanted=true",
+        "https://gum.co/oLpqb?wanted=true",
+        "https://gum.co/oLpqb?wanted=true",
+        "https://gum.co/oLpqb/LASTCHANCE?wanted=true"
+      ],
+      "images": [
+        "https://scrapethissite.com/static/images/scraper-icon.png",
+        "https://scrapethissite.com/static/images/red-arrow.png",
+        "https://scrapethissite.com/static/images/paul-blank.jpg",
+        "https://scrapethissite.com/static/images/lev-selector.jpg",
+        "https://scrapethissite.com/static/images/screenshots/http-request.png",
+        "https://scrapethissite.com/static/images/screenshots/spreadsheet.png",
+        "https://scrapethissite.com/static/images/screenshots/dashboard.png",
+        "https://scrapethissite.com/static/images/satisification-guarantee-logo.jpg",
+        "https://scrapethissite.com/static/images/nicholas-renotte.jpg",
+        "https://www.facebook.com/tr?id=764287443701341&ev=PageView&noscript=1"
+      ],
+      "status_code": 200,
+      "method": "http_extraction",
+      "url": "https://scrapethissite.com/lessons/",
+      "depth": 1,
+      "crawl_order": 3
+    },
+    {
+      "success": true,
+      "title": "Frequently Asked Questions | Scrape This Site | A public sandbox for learning web scraping",
+      "content": "Frequently Asked Questions | Scrape This Site | A public sandbox for learning web scraping Scrape This Site Sandbox Lessons FAQ Login Frequently Asked Questions Please Scrape This Site This site is made for the purpose of teaching people the art of web scraping. Please feel free to write or use software in order to automatically pull, harvest, scrape, download or otherwise access any information on this site. Please be Well-Behaved Just like any site you'd scrape out in the wild wild west (www), please be mindful of other users trying to access the site. From a technical standpoint, you must observe the following rules: Clients may only make a maximum of one request per second Clients must send an identifying user agent Clients must respect this site's robots.txt file Any client that violates the rules above or otherwise tries to interfere with the site's operation will be subject to a temporary or permanent ban. Be a good web scraping citizen. 👋 Lessons and Videos © Hartley Brody 2023",
+      "word_count": 169,
+      "links": [
+        "https://scrapethissite.com/",
+        "https://scrapethissite.com/pages/",
+        "https://scrapethissite.com/lessons/",
+        "https://scrapethissite.com/faq/",
+        "https://scrapethissite.com/login/",
+        "https://scrapethissite.com/robots.txt"
+      ],
+      "images": [
+        "https://scrapethissite.com/static/images/scraper-icon.png",
+        "https://www.facebook.com/tr?id=764287443701341&ev=PageView&noscript=1",
+        "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/950945448/?guid=ON&script=0"
+      ],
+      "status_code": 200,
+      "method": "http_extraction",
+      "url": "https://scrapethissite.com/faq/",
+      "depth": 1,
+      "crawl_order": 4
+    },
+    {
+      "success": true,
+      "title": "Login | Scrape This Site | A public sandbox for learning web scraping",
+      "content": "Login | Scrape This Site | A public sandbox for learning web scraping Scrape This Site Sandbox Lessons FAQ Login Login Your Email Your Password Need an account? Start learning web scraping today . Lessons and Videos © Hartley Brody 2023",
+      "word_count": 41,
+      "links": [
+        "https://scrapethissite.com/",
+        "https://scrapethissite.com/pages/",
+        "https://scrapethissite.com/lessons/",
+        "https://scrapethissite.com/faq/",
+        "https://scrapethissite.com/login/",
+        "https://scrapethissite.com/lessons/"
+      ],
+      "images": [
+        "https://scrapethissite.com/static/images/scraper-icon.png",
+        "https://www.facebook.com/tr?id=764287443701341&ev=PageView&noscript=1",
+        "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/950945448/?guid=ON&script=0"
+      ],
+      "status_code": 200,
+      "method": "http_extraction",
+      "url": "https://scrapethissite.com/login/",
+      "depth": 1,
+      "crawl_order": 5
+    }
+  ],
+  "combined_content": "\n\n=== Learn Web Scraping | Scrape This Site | A public sandbox for learning web scraping (https://scrapethissite.com/pages/) ===\nLearn Web Scraping | Scrape This Site | A public sandbox for learning web scraping Scrape This Site Sandbox Lessons FAQ Login Web Scraping Sandbox Countries of the World: A Simple Example A single page that lists information about all the countries in the world. Good for those just get started with web scraping. Hockey Teams: Forms, Searching and Pagination Browse through a database of NHL team stats since 1990. Practice building a scraper that handles common website interface components. Oscar Winning Films: AJAX and Javascript Click through a bunch of great films. Learn how content is added to the page asynchronously with Javascript and how you can scrape it. Turtles All the Way Down: Frames & iFrames Some older sites might still use frames to break up thier pages. Modern ones might be using iFrames to expose data. Learn about turtles as you scrape content inside frames. Advanced Topics: Real World Challenges You'll Encounter Scraping real websites, you're likely run into a number of common gotchas. Get practice with spoofing headers, handling logins & session cookies, finding CSRF tokens, and other common network errors. Lessons and Videos © Hartley Brody 2023\n\n=== Scrape This Site | A public sandbox for learning web scraping (https://scrapethissite.com/) ===\nScrape This Site | A public sandbox for learning web scraping Scrape This Site Sandbox Lessons FAQ Login Scrape This Site The internet's best resource for learning web scraping . Explore Sandbox Begin Lessons → Lessons and Videos © Hartley Brody 2023\n\n=== Sign Up | Scrape This Site | A public sandbox for learning web scraping (https://scrapethissite.com/lessons/) ===\nSign Up | Scrape This Site | A public sandbox for learning web scraping Scrape This Site Sandbox Lessons FAQ Login A course to help you Scrape Any Website Learn how to build your own web scrapers and start collecting the data you need. Get Started Now Purchase securely with Paypal or Credit Card. Build your first scraper in minutes! \"The course was great and well worth the tuition. It was easy to follow, and I was able to conquer the basics of web scraping very quickly.\" Paul Blank \"I really liked your course, because it showed me how it is possible to do things in a simple and elegant way and saved me a lot of time (days if not weeks).\" Lev Selector Follow along step-by-step... Watch as I guide you through the entire process of building a web scraper I'll show you the most common problems you'll encounter, and how to get past them Download my sample code from each lesson and run it yourself You'll Learn How to Scrape: Tables Forms Pagination Search Boxes Javascript and AJAX iFrames eCommerce Websites Logins & Sessions You'll also learn how to export your data into an excel spreadsheet or database for easy access. Get access to: Dozens of unique lessons covering the most common scraping problems Downloadable, working python code samples that you can use right away A community discussion around each lesson, with me answering questions Almost 2GB of video content that you can view online or download and take with you If you're not happy with the course, you'll get a 100% refund. There's nothing to lose . Learn more about the course: Your browser doesn't support HTML5 video :( Try using the latest version of Firefox or Chrome Get Started Now Purchase securely with Paypal or Credit Card. \"I loved the course and believed it was worth every penny!\" Nicholas Renotte This course has been years in the making . In 2012, I published a blog post titled \"I Don’t Need No Stinking API: Web Scraping For Fun and Profit\" documenting some lessons I had learned scraping a few different sites. The post shot to the top of Hacker News and has since been viewed by over 250,000 people. It resonated with people because of its simple but important lessons on pulling data from websites . It has been used as required reading material in some college-level courses, and it even outranked the Wikipedia article when you searched for \"web scraping\" in Google. In 2013, I published my first book titled \"The Ultimate Guide to Web Scraping.\" The book has since sold thousands of copies to people from all kinds of backgrounds. I heard from everyone from graduate students and software developers to small business owners and journalists . Many wrote in with praise for how the book had helped them finally understand the technical concepts and collect the data they were looking for. The number one piece of feedback I got about the book was that people wanted more hands-on examples. They wanted to practice building scrapers for simplified sites that were easy to learn. Some people just wanted working code that they could tweak and use for their own purposes. That's what led me to create Scrape This Site — the world's best place to learn web scraping . I wanted to create a site that was: Built for beginners — no technical background required Easy to follow, with simple step-by-step instructions Focused on the fundamentals that apply to every website Thorough, giving plenty of examples and use cases Get Lifetime Access! View all the latest content whenever new lessons are added Each lesson will always have the latest, up-to-date information Need Help? Each lesson has a discussion forum and FAQ Connect with me personally, as I jump in to answer your questions Get Started Now Purchase securely with Paypal or Credit Card. © Hartley Brody × Before You Go… $50 Off Code Use promo code LASTCHANCE to get $50 off the full course price, but only for a limited time: 9:00 Get Started Now Purchase securely with Paypal or Credit Card. Lessons and Videos © Hartley Brody 2023\n\n=== Frequently Asked Questions | Scrape This Site | A public sandbox for learning web scraping (https://scrapethissite.com/faq/) ===\nFrequently Asked Questions | Scrape This Site | A public sandbox for learning web scraping Scrape This Site Sandbox Lessons FAQ Login Frequently Asked Questions Please Scrape This Site This site is made for the purpose of teaching people the art of web scraping. Please feel free to write or use software in order to automatically pull, harvest, scrape, download or otherwise access any information on this site. Please be Well-Behaved Just like any site you'd scrape out in the wild wild west (www), please be mindful of other users trying to access the site. From a technical standpoint, you must observe the following rules: Clients may only make a maximum of one request per second Clients must send an identifying user agent Clients must respect this site's robots.txt file Any client that violates the rules above or otherwise tries to interfere with the site's operation will be subject to a temporary or permanent ban. Be a good web scraping citizen. 👋 Lessons and Videos © Hartley Brody 2023\n\n=== Login | Scrape This Site | A public sandbox for learning web scraping (https://scrapethissite.com/login/) ===\nLogin | Scrape This Site | A public sandbox for learning web scraping Scrape This Site Sandbox Lessons FAQ Login Login Your Email Your Password Need an account? Start learning web scraping today . Lessons and Videos © Hartley Brody 2023",
+  "timestamp": "2025-08-16T00:45:34.878184"
+}
