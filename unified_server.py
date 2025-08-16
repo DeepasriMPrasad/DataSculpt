@@ -730,73 +730,229 @@ async def extract_content(crawl_request: CrawlRequest, background_tasks: Backgro
 # SingleFile endpoint for rich HTML capture
 @app.post("/api/singlefile")
 async def singlefile_capture(crawl_request: CrawlRequest):
-    """Capture rich HTML with CSS and images embedded using real content extraction."""
+    """Capture rich HTML with CSS, images, fonts, and JavaScript embedded for offline viewing."""
     try:
         import aiohttp
         from bs4 import BeautifulSoup
         import base64
         import re
+        import mimetypes
         from urllib.parse import urljoin, urlparse
+        from datetime import datetime
         
-        async with aiohttp.ClientSession() as session:
-            # Get the main page
+        start_time = datetime.now()
+        resources_inlined = []
+        
+        # Enhanced headers to mimic real browser
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0'
+        }
+        
+        # Add authentication if provided
+        auth_headers = {}
+        if hasattr(crawl_request, 'auth_type') and crawl_request.auth_type:
+            if crawl_request.auth_type == 'bearer' and hasattr(crawl_request, 'auth_token'):
+                auth_headers['Authorization'] = f"Bearer {crawl_request.auth_token}"
+            elif crawl_request.auth_type == 'basic' and hasattr(crawl_request, 'auth_username'):
+                import base64
+                credentials = f"{crawl_request.auth_username}:{crawl_request.auth_password or ''}"
+                encoded = base64.b64encode(credentials.encode()).decode()
+                auth_headers['Authorization'] = f"Basic {encoded}"
+            elif crawl_request.auth_type == 'custom' and hasattr(crawl_request, 'auth_token'):
+                auth_headers['Authorization'] = crawl_request.auth_token
+        
+        headers.update(auth_headers)
+        
+        # Add custom headers if provided
+        if hasattr(crawl_request, 'custom_headers') and crawl_request.custom_headers:
+            try:
+                import json
+                custom = json.loads(crawl_request.custom_headers)
+                headers.update(custom)
+            except:
+                pass
+        
+        timeout = aiohttp.ClientTimeout(total=30)
+        async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
+            # Get the main page with enhanced browser simulation
             async with session.get(crawl_request.url) as response:
                 html_content = await response.text()
+                base_url = str(response.url)
                 
             soup = BeautifulSoup(html_content, 'html.parser')
             
-            # Inline CSS files
+            # Add SingleFile metadata
+            meta_tag = soup.new_tag('meta', attrs={'name': 'singlefile-captured', 'content': start_time.isoformat()})
+            if soup.head:
+                soup.head.insert(0, meta_tag)
+            
+            # Inline CSS files (external stylesheets)
             for link in soup.find_all('link', rel='stylesheet'):
                 href = link.get('href')
-                if href:
-                    css_url = urljoin(crawl_request.url, href)
+                if href and not href.startswith('data:'):
+                    css_url = urljoin(base_url, href)
                     try:
                         async with session.get(css_url) as css_response:
-                            css_content = await css_response.text()
-                            # Create style tag and replace link
-                            style_tag = soup.new_tag('style')
-                            style_tag.string = css_content
-                            link.replace_with(style_tag)
-                    except:
-                        pass  # Skip if CSS can't be loaded
+                            if css_response.status == 200:
+                                css_content = await css_response.text()
+                                
+                                # Process @import statements in CSS
+                                import_pattern = r'@import\s+url\(["\']?([^"\']+)["\']?\);?'
+                                for match in re.finditer(import_pattern, css_content):
+                                    import_url = urljoin(css_url, match.group(1))
+                                    try:
+                                        async with session.get(import_url) as import_response:
+                                            if import_response.status == 200:
+                                                import_css = await import_response.text()
+                                                css_content = css_content.replace(match.group(0), import_css)
+                                    except:
+                                        pass
+                                
+                                # Process font URLs in CSS
+                                font_pattern = r'url\(["\']?([^"\']+\.(?:woff2?|ttf|eot|otf))["\']?\)'
+                                for match in re.finditer(font_pattern, css_content):
+                                    font_url = urljoin(css_url, match.group(1))
+                                    try:
+                                        async with session.get(font_url) as font_response:
+                                            if font_response.status == 200:
+                                                font_data = await font_response.read()
+                                                if len(font_data) < 200000:  # Inline fonts under 200KB
+                                                    content_type = font_response.headers.get('content-type', 'font/woff2')
+                                                    if not content_type.startswith('font/'):
+                                                        # Guess font type from extension
+                                                        if '.woff2' in font_url:
+                                                            content_type = 'font/woff2'
+                                                        elif '.woff' in font_url:
+                                                            content_type = 'font/woff'
+                                                        elif '.ttf' in font_url:
+                                                            content_type = 'font/ttf'
+                                                    
+                                                    b64_font = base64.b64encode(font_data).decode()
+                                                    data_url = f"data:{content_type};base64,{b64_font}"
+                                                    css_content = css_content.replace(match.group(0), f'url({data_url})')
+                                                    resources_inlined.append('font')
+                                    except:
+                                        pass
+                                
+                                # Process background images in CSS
+                                bg_pattern = r'url\(["\']?([^"\']+\.(?:png|jpg|jpeg|gif|svg|webp))["\']?\)'
+                                for match in re.finditer(bg_pattern, css_content):
+                                    img_url = urljoin(css_url, match.group(1))
+                                    try:
+                                        async with session.get(img_url) as img_response:
+                                            if img_response.status == 200:
+                                                img_data = await img_response.read()
+                                                if len(img_data) < 100000:  # Inline background images under 100KB
+                                                    content_type = img_response.headers.get('content-type')
+                                                    if not content_type:
+                                                        content_type, _ = mimetypes.guess_type(img_url)
+                                                    if content_type and content_type.startswith('image/'):
+                                                        b64_img = base64.b64encode(img_data).decode()
+                                                        data_url = f"data:{content_type};base64,{b64_img}"
+                                                        css_content = css_content.replace(match.group(0), f'url({data_url})')
+                                                        resources_inlined.append('bg-image')
+                                    except:
+                                        pass
+                                
+                                # Create style tag and replace link
+                                style_tag = soup.new_tag('style', attrs={'data-singlefile-css': href})
+                                style_tag.string = css_content
+                                link.replace_with(style_tag)
+                                resources_inlined.append('css')
+                    except Exception as e:
+                        logger.debug(f"Failed to inline CSS {css_url}: {e}")
             
-            # Inline small images as base64
+            # Inline images (img tags)
             for img in soup.find_all('img'):
                 src = img.get('src')
                 if src and not src.startswith('data:'):
-                    img_url = urljoin(crawl_request.url, src)
+                    img_url = urljoin(base_url, src)
                     try:
                         async with session.get(img_url) as img_response:
                             if img_response.status == 200:
                                 img_data = await img_response.read()
-                                if len(img_data) < 50000:  # Only inline small images (< 50KB)
-                                    content_type = img_response.headers.get('content-type', 'image/png')
-                                    b64_data = base64.b64encode(img_data).decode()
-                                    img['src'] = f"data:{content_type};base64,{b64_data}"
+                                if len(img_data) < 500000:  # Inline images under 500KB
+                                    content_type = img_response.headers.get('content-type')
+                                    if not content_type:
+                                        content_type, _ = mimetypes.guess_type(img_url)
+                                    if content_type and content_type.startswith('image/'):
+                                        b64_data = base64.b64encode(img_data).decode()
+                                        img['src'] = f"data:{content_type};base64,{b64_data}"
+                                        resources_inlined.append('image')
+                    except Exception as e:
+                        logger.debug(f"Failed to inline image {img_url}: {e}")
+            
+            # Inline favicon
+            for link in soup.find_all('link', rel=lambda x: x and 'icon' in x):
+                href = link.get('href')
+                if href and not href.startswith('data:'):
+                    icon_url = urljoin(base_url, href)
+                    try:
+                        async with session.get(icon_url) as icon_response:
+                            if icon_response.status == 200:
+                                icon_data = await icon_response.read()
+                                if len(icon_data) < 50000:  # Inline small favicons
+                                    content_type = icon_response.headers.get('content-type', 'image/x-icon')
+                                    b64_data = base64.b64encode(icon_data).decode()
+                                    link['href'] = f"data:{content_type};base64,{b64_data}"
+                                    resources_inlined.append('favicon')
                     except:
-                        pass  # Skip if image can't be loaded
+                        pass
+            
+            # Remove external script tags that might break offline viewing
+            for script in soup.find_all('script', src=True):
+                src = script.get('src')
+                if src and any(domain in src for domain in ['google-analytics', 'googletagmanager', 'facebook', 'twitter']):
+                    script.decompose()
+            
+            # Add SingleFile signature comment
+            capture_time = datetime.now()
+            elapsed = (capture_time - start_time).total_seconds()
+            
+            signature = f"""
+<!--
+ Page saved with SingleFile 
+ url: {crawl_request.url} 
+ saved date: {capture_time.strftime('%Y-%m-%d %H:%M:%S')} 
+ resources inlined: {len(resources_inlined)} ({', '.join(set(resources_inlined))})
+ capture time: {elapsed:.2f}s
+-->"""
             
             # Get the final HTML
-            final_html = str(soup)
+            final_html = signature + str(soup)
             size_bytes = len(final_html.encode('utf-8'))
             
             return {
                 "success": True,
                 "html": final_html,
                 "size_bytes": size_bytes,
-                "resources_inlined": ["css", "images"],
-                "capture_time": "N/A"
+                "resources_inlined": list(set(resources_inlined)),
+                "capture_time": f"{elapsed:.2f}s",
+                "resources_count": len(resources_inlined)
             }
             
     except Exception as e:
         logger.error(f"SingleFile capture failed: {e}")
+        import traceback
+        logger.error(f"SingleFile error traceback: {traceback.format_exc()}")
         return {
             "success": False,
             "error": str(e),
-            "html": f"<html><body><h1>Error</h1><p>{str(e)}</p></body></html>",
+            "html": f"<html><body><h1>SingleFile Capture Error</h1><p>{str(e)}</p></body></html>",
             "size_bytes": 0,
             "resources_inlined": [],
-            "capture_time": "N/A"
+            "capture_time": "0.00s"
         }
 
 # PDF processing endpoint

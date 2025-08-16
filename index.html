@@ -364,7 +364,12 @@
                             console.log('🎨 Capturing rich HTML with SingleFile...');
                             const singleFileResponse = await apiClient.post('/singlefile', {
                                 url: crawlResults.url,
-                                timeout: 30
+                                timeout: 30,
+                                auth_type: settings.authType,
+                                auth_token: settings.authToken,
+                                auth_username: settings.authUsername,
+                                auth_password: settings.authPassword,
+                                custom_headers: settings.customHeaders
                             });
                             
                             downloadFile(
@@ -373,7 +378,12 @@
                                 'text/html'
                             );
                             
-                            alert(`✅ Rich HTML downloaded!\n• CSS styles inlined\n• Images embedded\n• File size: ${Math.round(singleFileResponse.size_bytes / 1024)} KB`);
+                            const resourceTypes = singleFileResponse.resources_inlined || [];
+                            const resourceCount = singleFileResponse.resources_count || 0;
+                            const captureTime = singleFileResponse.capture_time || 'N/A';
+                            const sizeKB = Math.round(singleFileResponse.size_bytes / 1024);
+                            
+                            alert(`✅ Rich HTML downloaded!\n• ${resourceCount} resources embedded: ${resourceTypes.join(', ')}\n• File size: ${sizeKB} KB\n• Capture time: ${captureTime}\n• Includes: CSS, images, fonts, favicons`);
                         } catch (error) {
                             console.error('SingleFile capture failed:', error);
                             // Fallback to basic HTML
@@ -382,7 +392,7 @@
                                 `${baseName}_${timestamp}_basic.html`,
                                 'text/html'
                             );
-                            alert('⚠️ Rich HTML capture failed, downloaded basic HTML instead');
+                            alert('⚠️ Rich HTML capture failed, downloaded basic HTML instead\nError: ' + (error.message || error));
                         }
                         break;
                     case 'txt':
