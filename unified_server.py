@@ -365,7 +365,10 @@ async def crawl_single_page(url: str, crawl_request: CrawlRequest):
         return {
             "success": False,
             "error": str(e),
-            "url": url
+            "url": url,
+            "word_count": 0,
+            "links": [],
+            "images": []
         }
 
 def apply_scope_filter(url: str, seed_url: str, scope: str) -> bool:
@@ -510,6 +513,18 @@ async def recursive_crawl(crawl_request: CrawlRequest):
         
         # Crawl the current page
         page_result = await crawl_single_page(current_url, crawl_request)
+        
+        # Ensure page_result is a dictionary before assignment (fix NoneType error)
+        if not page_result or not isinstance(page_result, dict):
+            page_result = {
+                "success": False,
+                "error": "No result returned from crawl_single_page", 
+                "url": current_url,
+                "word_count": 0,
+                "links": [],
+                "images": []
+            }
+            
         page_result["url"] = current_url
         page_result["depth"] = current_depth
         page_result["crawl_order"] = pages_crawled
@@ -558,9 +573,11 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
         # Perform recursive crawling
         crawl_results = await recursive_crawl(crawl_request)
         
-        # Process results
+        # Process results - ensure proper success tracking
         successful_pages = [r for r in crawl_results if r.get("success", False)]
         failed_pages = [r for r in crawl_results if not r.get("success", False)]
+        
+        scraping_logger.info(f"Crawl results processed: {len(successful_pages)} successful, {len(failed_pages)} failed, {len(crawl_results)} total")
         
         total_words = sum(r.get("word_count", 0) for r in successful_pages)
         all_links = []
@@ -596,6 +613,24 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
         
         combined_html += "</body></html>"
         
+        # Initialize variables for all cases
+        crawl_data = {
+            "crawl_summary": {
+                "start_url": crawl_request.url,
+                "total_pages": len(crawl_results),
+                "successful_pages": len(successful_pages),
+                "failed_pages": len(failed_pages),
+                "total_words": total_words,
+                "unique_links": len(unique_links),
+                "unique_images": len(unique_images),
+                "max_depth_reached": max(r.get("depth", 0) for r in crawl_results) if crawl_results else 0
+            },
+            "pages": crawl_results,
+            "combined_content": combined_content,
+            "timestamp": datetime.now().isoformat()
+        }
+        files_saved = []
+        
         # Save to output folder if there are successful results
         if successful_pages:
             output_dir = Path("./crawl_output")
@@ -606,21 +641,6 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
             
             # Save combined results
             import json as json_module
-            crawl_data = {
-                "crawl_summary": {
-                    "start_url": crawl_request.url,
-                    "total_pages": len(crawl_results),
-                    "successful_pages": len(successful_pages),
-                    "failed_pages": len(failed_pages),
-                    "total_words": total_words,
-                    "unique_links": len(unique_links),
-                    "unique_images": len(unique_images),
-                    "max_depth_reached": max(r.get("depth", 0) for r in crawl_results) if crawl_results else 0
-                },
-                "pages": crawl_results,
-                "combined_content": combined_content,
-                "timestamp": datetime.now().isoformat()
-            }
             
             json_file = output_dir / f"recursive_crawl_{base_name}_{timestamp}.json"
             with open(json_file, 'w', encoding='utf-8') as f:
@@ -663,7 +683,7 @@ async def start_crawl(crawl_request: CrawlRequest, background_tasks: BackgroundT
                 "output_folder": "crawl_output",
                 "files_saved": files_saved if successful_pages else []
             },
-            "json": crawl_data if successful_pages else {"error": "No successful pages crawled"},
+            "json": crawl_data if crawl_data else {"error": "No successful pages crawled"},
             "markdown": combined_markdown,
             "html": combined_html,
             "text": combined_content,

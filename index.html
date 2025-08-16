@@ -752,7 +752,7 @@
                     React.createElement('div', { className: 'bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700' },
                         React.createElement('h3', { className: 'text-lg font-semibold text-gray-900 dark:text-white mb-2' }, 'Total Words'),
                         React.createElement('p', { className: 'text-3xl font-bold text-purple-600 dark:text-purple-400' }, 
-                            queue.reduce((total, item) => total + (item.wordCount || 0), 0)
+                            queue.reduce((total, item) => total + (item.wordCount || item.word_count || 0), 0).toLocaleString()
                         ),
                         React.createElement('p', { className: 'text-sm text-gray-500 dark:text-gray-400' }, 'Words extracted')
                     )
@@ -777,7 +777,7 @@
                                             React.createElement('p', { className: 'text-sm font-medium text-gray-900 dark:text-white' }, item.url),
                                             React.createElement('div', { className: 'flex space-x-4 text-xs text-gray-500 dark:text-gray-400' },
                                                 React.createElement('span', null, `Depth: ${item.depth}`),
-                                                item.wordCount && React.createElement('span', null, `${item.wordCount} words`),
+                                                (item.wordCount || item.word_count) && React.createElement('span', null, `${item.wordCount || item.word_count || 0} words`),
                                                 item.timestamp && React.createElement('span', null, new Date(item.timestamp).toLocaleTimeString())
                                             )
                                         ),
