@@ -1308,7 +1308,14 @@ Links Found:
                 
                 scraping_logger.info(f"Successfully crawled {len(additional_pages)} additional pages from PDF links")
         
-        api_logger.info(f"PDF parsing completed: {file.filename}, {len(saved_files)} files saved")
+        # Store last crawl results for download functionality
+        global last_crawl_results
+        last_crawl_results = results
+        
+        scraping_logger.info(f"PDF parsing completed successfully: {file.filename} - {pdf_data['word_count']} words, {len(pdf_data['links'])} links")
+        if follow_links and additional_pages:
+            scraping_logger.info(f"Successfully crawled {len(additional_pages)} web pages from PDF links")
+        api_logger.info(f"PDF parsing completed: {file.filename} - Files saved: {saved_files}")
         
         return results
         
