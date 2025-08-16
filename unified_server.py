@@ -272,93 +272,93 @@ async def crawl_single_page(url: str, crawl_request: CrawlRequest):
                 scraping_logger.info(f"Falling back to HTTP extraction for {url}")
         else:
             scraping_logger.info(f"Falling back to HTTP extraction for {url}")
-            
-            import aiohttp
-            from bs4 import BeautifulSoup
-            from urllib.parse import urljoin, urlparse, urldefrag
-            
-            # Build authentication headers
-            auth_headers = {}
-            if crawl_request.auth_type == "bearer" and crawl_request.auth_token:
-                auth_headers["Authorization"] = f"Bearer {crawl_request.auth_token}"
-                scraping_logger.info(f"Using Bearer token authentication for {url}")
-            elif crawl_request.auth_type == "basic" and crawl_request.auth_username and crawl_request.auth_password:
-                import base64
-                credentials = base64.b64encode(f"{crawl_request.auth_username}:{crawl_request.auth_password}".encode()).decode()
-                auth_headers["Authorization"] = f"Basic {credentials}"
-                scraping_logger.info(f"Using Basic authentication for {url} (user: {crawl_request.auth_username})")
-            elif crawl_request.auth_type == "custom" and crawl_request.auth_token:
-                auth_headers["Authorization"] = crawl_request.auth_token
-                scraping_logger.info(f"Using custom authorization header for {url}")
-            
-            # Add custom headers if provided
-            if crawl_request.custom_headers:
-                auth_headers.update(crawl_request.custom_headers)
-                scraping_logger.info(f"Added {len(crawl_request.custom_headers)} custom headers for {url}")
+        
+        # HTTP extraction fallback (this should always execute when browser automation is disabled or fails)
+        import aiohttp
+        from bs4 import BeautifulSoup
+        from urllib.parse import urljoin, urlparse, urldefrag
+        
+        auth_headers = {}
+        if crawl_request.auth_type == "bearer" and crawl_request.auth_token:
+            auth_headers["Authorization"] = f"Bearer {crawl_request.auth_token}"
+            scraping_logger.info(f"Using Bearer token authentication for {url}")
+        elif crawl_request.auth_type == "basic" and crawl_request.auth_username and crawl_request.auth_password:
+            import base64
+            credentials = base64.b64encode(f"{crawl_request.auth_username}:{crawl_request.auth_password}".encode()).decode()
+            auth_headers["Authorization"] = f"Basic {credentials}"
+            scraping_logger.info(f"Using Basic authentication for {url} (user: {crawl_request.auth_username})")
+        elif crawl_request.auth_type == "custom" and crawl_request.auth_token:
+            auth_headers["Authorization"] = crawl_request.auth_token
+            scraping_logger.info(f"Using custom authorization header for {url}")
+        
+        # Add custom headers if provided
+        if crawl_request.custom_headers:
+            auth_headers.update(crawl_request.custom_headers)
+            scraping_logger.info(f"Added {len(crawl_request.custom_headers)} custom headers for {url}")
 
-            # Enhanced browser headers
-            browser_headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
-                'Sec-Fetch-User': '?1',
-                'Cache-Control': 'max-age=0'
-            }
-            
-            # Merge authentication headers with browser headers
-            final_headers = {**browser_headers, **auth_headers}
-            
-            async with aiohttp.ClientSession(
-                timeout=aiohttp.ClientTimeout(total=30),
-                connector=aiohttp.TCPConnector(limit=10),
-                cookie_jar=aiohttp.CookieJar()
-            ) as session:
-                async with session.get(url, headers=final_headers, allow_redirects=True) as response:
-                    html_content = await response.text()
-                    soup = BeautifulSoup(html_content, 'html.parser')
-                    
-                    # Extract title
-                    title_tag = soup.find('title')
-                    title_text = title_tag.get_text(strip=True) if title_tag else "No title"
-                    
-                    # Extract text content
-                    for script in soup(["script", "style"]):
-                        script.decompose()
-                    text_content = soup.get_text(separator=' ', strip=True)
-                    text_content = ' '.join(text_content.split())
-                    
-                    # Extract links
-                    links = []
-                    for link in soup.find_all('a', href=True):
-                        href = link['href']
-                        absolute_url = urljoin(url, href)
-                        clean_url = urldefrag(absolute_url)[0]  # Remove fragments
-                        if clean_url and clean_url.startswith(('http://', 'https://')):
-                            links.append(clean_url)
-                    
-                    # Extract images
-                    images = []
-                    for img in soup.find_all('img', src=True):
-                        img_url = urljoin(url, img['src'])
-                        images.append(img_url)
-                    
-                    return {
-                        "success": True,
-                        "title": title_text,
-                        "content": text_content,
-                        "word_count": len(text_content.split()) if text_content else 0,
-                        "links": links[:50],  # Limit to first 50 links
-                        "images": images[:10],  # Limit to first 10 images
-                        "status_code": response.status,
-                        "method": "http_extraction"
-                    }
+        # Enhanced browser headers
+        browser_headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
+            'Cache-Control': 'max-age=0'
+        }
+        
+        # Merge authentication headers with browser headers
+        final_headers = {**browser_headers, **auth_headers}
+        
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=30),
+            connector=aiohttp.TCPConnector(limit=10),
+            cookie_jar=aiohttp.CookieJar()
+        ) as session:
+            async with session.get(url, headers=final_headers, allow_redirects=True) as response:
+                html_content = await response.text()
+                soup = BeautifulSoup(html_content, 'html.parser')
+                
+                # Extract title
+                title_tag = soup.find('title')
+                title_text = title_tag.get_text(strip=True) if title_tag else "No title"
+                
+                # Extract text content
+                for script in soup(["script", "style"]):
+                    script.decompose()
+                text_content = soup.get_text(separator=' ', strip=True)
+                text_content = ' '.join(text_content.split())
+                
+                # Extract links
+                links = []
+                for link in soup.find_all('a', href=True):
+                    href = link['href']
+                    absolute_url = urljoin(url, href)
+                    clean_url = urldefrag(absolute_url)[0]  # Remove fragments
+                    if clean_url and clean_url.startswith(('http://', 'https://')):
+                        links.append(clean_url)
+                
+                # Extract images
+                images = []
+                for img in soup.find_all('img', src=True):
+                    img_url = urljoin(url, img['src'])
+                    images.append(img_url)
+                
+                return {
+                    "success": True,
+                    "title": title_text,
+                    "content": text_content,
+                    "word_count": len(text_content.split()) if text_content else 0,
+                    "links": links[:50],  # Limit to first 50 links
+                    "images": images[:10],  # Limit to first 10 images
+                    "status_code": response.status,
+                    "method": "http_extraction"
+                }
                     
     except Exception as e:
         scraping_logger.error(f"Failed to crawl {url}: {str(e)}")
