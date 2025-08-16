@@ -36,9 +36,23 @@ sys.path.insert(0, str(Path(__file__).parent / "apps" / "api"))
 # Import session management
 from session_api import router as session_router
 
-# Configure comprehensive logging system
+# Configure comprehensive logging system with Windows support
 log_dir = Path("./logs")
 log_dir.mkdir(exist_ok=True)
+
+# Ensure log directory permissions for Windows
+try:
+    # Test write permissions
+    test_file = log_dir / ".test_permissions"
+    test_file.touch()
+    test_file.unlink()
+    logger_init_msg = f"Log directory initialized: {log_dir.absolute()}"
+except Exception as e:
+    # Fallback to user directory on Windows if current directory not writable
+    if platform.system() == 'Windows':
+        log_dir = Path.home() / "CrawlOpsStudio" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+    logger_init_msg = f"Log directory created with fallback: {log_dir.absolute()} (reason: {e})"
 
 # Create detailed logging configuration
 logging.basicConfig(
@@ -48,9 +62,9 @@ logging.basicConfig(
         # Console output
         logging.StreamHandler(),
         # Main application log
-        logging.FileHandler(log_dir / "crawlops_server.log"),
+        logging.FileHandler(log_dir / "crawlops_server.log", encoding='utf-8'),
         # Detailed scraping log
-        logging.FileHandler(log_dir / "scraping_detailed.log")
+        logging.FileHandler(log_dir / "scraping_detailed.log", encoding='utf-8')
     ]
 )
 
@@ -60,16 +74,27 @@ scraping_logger = logging.getLogger('scraping')
 api_logger = logging.getLogger('api')
 
 # Configure scraping logger with separate file
-scraping_handler = logging.FileHandler(log_dir / "scraping_activity.log")
+scraping_handler = logging.FileHandler(log_dir / "scraping_activity.log", encoding='utf-8')
 scraping_handler.setFormatter(logging.Formatter('%(asctime)s - SCRAPING - %(levelname)s - %(message)s'))
 scraping_logger.addHandler(scraping_handler)
 scraping_logger.setLevel(logging.DEBUG)
+# Prevent duplicate console output for scraping logger
+scraping_logger.propagate = False
 
 # Configure API logger
-api_handler = logging.FileHandler(log_dir / "api_requests.log")
+api_handler = logging.FileHandler(log_dir / "api_requests.log", encoding='utf-8')
 api_handler.setFormatter(logging.Formatter('%(asctime)s - API - %(levelname)s - %(message)s'))
 api_logger.addHandler(api_handler)
 api_logger.setLevel(logging.INFO)
+# Prevent duplicate console output for API logger
+api_logger.propagate = False
+
+# Log initialization message
+print(logger_init_msg)
+logger.info(logger_init_msg)
+logger.info(f"Platform: {platform.system()}")
+logger.info(f"Python version: {sys.version}")
+logger.info("Logging system initialized successfully")
 
 # Create FastAPI app
 app = FastAPI(
