@@ -752,7 +752,7 @@
         }
 
         // PDF Upload Section Component
-        function PDFUploadSection() {
+        function PDFUploadSection({ setCrawlResults }) {
             const [selectedFile, setSelectedFile] = useState(null);
             const [isUploading, setIsUploading] = useState(false);
             const [uploadResult, setUploadResult] = useState(null);
@@ -791,6 +791,18 @@
                     const result = await apiClient.postFile('/pdf/parse', formData);
                     setUploadResult(result);
                     console.log('PDF parsing result:', result);
+                    
+                    // Set crawl results for download section
+                    if (result.success && setCrawlResults) {
+                        setCrawlResults({
+                            url: result.source,
+                            meta: result.meta,
+                            json: result.json,
+                            markdown: result.markdown || '',
+                            html: result.html || '',
+                            text: result.text || ''
+                        });
+                    }
                 } catch (error) {
                     console.error('PDF upload failed:', error);
                     setUploadResult({
